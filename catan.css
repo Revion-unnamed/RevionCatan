@@ -1,0 +1,1160 @@
+/* ================================================================
+   catan.css — Settlers of Catan · Phase 1
+   Styles are organised in the same order elements appear in the DOM.
+   ================================================================ */
+
+#start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--ocean-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#start-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 40px 32px;
+  background: rgba(26, 20, 10, 0.95);
+  border: 1px solid var(--gold);
+  border-radius: 16px;
+  min-width: 300px;
+}
+
+#start-title {
+  color: var(--gold);
+  font-size: 2.4rem;
+  letter-spacing: 0.2em;
+  text-shadow: 0 2px 12px rgba(200,146,42,0.4);
+}
+
+.start-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.start-label {
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+#player-count-btns, #mode-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.count-btn, .mode-btn {
+  background: #3a2010;
+  color: var(--sand);
+  border: 1px solid #6a4a2a;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.count-btn.active, .mode-btn.active {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--gold);
+}
+
+.count-btn:disabled, .mode-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#start-btn {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 40px;
+  font-family: 'Georgia', serif;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: filter 0.15s ease;
+}
+
+#start-btn:active {
+  filter: brightness(0.85);
+}
+
+#vp-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.scenario-btn {
+  background: #3a2010;
+  color: var(--sand);
+  border: 1px solid #6a4a2a;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.scenario-btn.active {
+  background: #1a5a3a;
+  color: #a8e6c0;
+  border-color: #2ecc71;
+}
+
+.vp-btn {
+  background: #3a2010;
+  color: var(--sand);
+  border: 1px solid #6a4a2a;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.vp-btn.active {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--gold);
+}
+
+#vp-display {
+  color: var(--gold);
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+#victory-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(10, 20, 10, 0.92);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#victory-screen.visible {
+  display: flex;
+}
+
+#victory-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 40px;
+  background: rgba(26, 20, 10, 0.98);
+  border: 2px solid var(--gold);
+  border-radius: 20px;
+  min-width: 280px;
+}
+
+#victory-crown {
+  font-size: 3rem;
+}
+
+#victory-name {
+  font-family: 'Georgia', serif;
+  font-size: 1.8rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+
+#victory-sub {
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 1rem;
+  opacity: 0.85;
+}
+
+#victory-vp {
+  color: var(--gold);
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+}
+
+#victory-restart {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 32px;
+  font-family: 'Georgia', serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+#longest-road-badge {
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  color: var(--sand);
+  transition: color 0.3s ease;
+}
+/* ================================================================
+   RESET & BASE
+   ================================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* --- Brand palette: warm parchment feel --- */
+  --ocean:        #2a6fa8;
+  --ocean-dark:   #1a4f7a;
+  --sand:         #e8d5a3;
+  --parchment:    #f5ead0;
+  --ink:          #2c1a0e;
+  --gold:         #c8922a;
+  --red-token:    #c0392b;
+  --white-token:  #f0e6cc;
+
+  /* --- Terrain tile fill colours --- */
+  --terrain-forest:    #2d6a2d;
+  --terrain-pasture:   #7ec850;
+  --terrain-fields:    #e8c84a;
+  --terrain-hills:     #c0714a;
+  --terrain-mountains: #7a7a8a;
+  --terrain-desert:    #d4b97a;
+  --terrain-ocean:     #2a6fa8;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;          /* Board fills the viewport; no page scroll */
+  background: var(--ocean-dark);
+  font-family: 'Georgia', serif;
+  touch-action: none;        /* Disable browser pan/zoom; JS handles touch */
+}
+
+
+/* ================================================================
+   HUD — fixed top bar
+   ================================================================ */
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  /* Fades to transparent so the board shows through below */
+  background: linear-gradient(to bottom, rgba(26, 40, 26, 0.92), transparent);
+  padding: 10px 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;      /* HUD never blocks taps on the board */
+  border-bottom: 2px solid transparent;
+transition: border-bottom 0.3s ease;
+}
+
+#hud h1 {
+  color: var(--gold);
+  font-size: 1.3rem;
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  text-transform: uppercase;
+}
+
+#turn-label {
+  color: var(--sand);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  transition: color 0.3s ease;
+}
+
+#end-turn-btn {
+  pointer-events: all;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+#end-turn-btn:active {
+  filter: brightness(0.85);
+}
+
+
+
+/* ================================================================
+   BOARD WRAPPER & SVG
+   ================================================================ */
+
+#board-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+transition: transform 0.05s ease;
+  overflow: hidden;
+}
+
+/* SVG fills the wrapper but is capped so it doesn't become huge on desktop */
+#board-svg {
+  width: 100%;
+  height: 100%;
+  max-width: 600px;
+  max-height: 100vh;
+}
+
+
+/* ================================================================
+   HEX TILE POLYGONS
+   All hex polygons share .hex-tile; terrain type adds a second class.
+   ================================================================ */
+
+.hex-tile {
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 2;
+  cursor: default;
+  transition: filter 0.15s ease;
+}
+
+
+/* Brief brightness flash on tap/click — tactile feedback
+.hex-tile:active {
+  filter: brightness(1.25);
+}
+*/
+
+/* Terrain-specific fills */
+.terrain-forest    { fill: var(--terrain-forest); }
+.terrain-pasture   { fill: var(--terrain-pasture); }
+.terrain-fields    { fill: var(--terrain-fields); }
+.terrain-hills     { fill: var(--terrain-hills); }
+.terrain-mountains { fill: var(--terrain-mountains); }
+.terrain-desert    { fill: var(--terrain-desert); }
+.terrain-lake { fill: #3a8fc0; }
+.terrain-ocean     { fill: var(--terrain-ocean); stroke: rgba(255, 255, 255, 0.1); }
+
+/* Inner highlight ring — a second, slightly smaller polygon
+   overlaid on each hex to give a subtle bevel/depth effect */
+.hex-shadow {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 3;
+  pointer-events: none;  /* Never steal touch events from the tile below */
+}
+
+
+/* ================================================================
+   NUMBER TOKENS
+   Two modifier classes: .red (6 & 8) and .normal (all others)
+   ================================================================ */
+
+/* Token background circle */
+.token-circle {
+  fill: var(--white-token);
+  stroke: #8a6030;
+  stroke-width: 1.5;
+}
+.token-circle.red {
+  fill: #f5d0cc;  /* Tinted pink for high-probability numbers */
+}
+
+/* Number text printed on the token */
+.token-number {
+  font-family: 'Georgia', serif;
+  font-weight: bold;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.token-number.red    { fill: var(--red-token); }
+.token-number.normal { fill: #3a2010; }
+
+/* Small pip dots that indicate roll probability (like a board game token) */
+.token-dots        { fill: var(--red-token); }
+.token-dots.normal { fill: #3a2010; }
+
+
+/* ================================================================
+   TERRAIN ICONS
+   Emoji characters rendered as SVG <text> nodes by JS.
+   ================================================================ */
+
+.terrain-icon {
+  font-size: 20px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+
+/* ================================================================
+   EDGES — road slots (lines between vertices)
+   ================================================================ */
+
+.edge {
+  stroke: rgba(255, 255, 255, 0.30);
+  stroke-width: 3;
+  stroke-linecap: round;
+  cursor: pointer;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.edge.available {
+  stroke: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+/* Highlight on hover — shows the player where they can build a road */
+.edge:hover {
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 4;
+}
+
+/* State: road placed by a player (colour set via JS) */
+.edge.road {
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+
+/* ================================================================
+   VERTICES — settlement / city slots (dots at hex corners)
+   ================================================================ */
+
+.vertex {
+  fill: rgba(255, 255, 255, 0.20);
+  stroke: rgba(255, 255, 255, 0.50);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill 0.15s ease, r 0.15s ease;
+}
+
+/* Highlight on hover — shows the player where they can build */
+.vertex:hover {
+  fill: rgba(255, 255, 255, 0.70);
+}
+
+/* State: settlement placed — filled with player colour via JS */
+.vertex.settlement {
+  r: 11;
+  stroke-width: 2;
+}
+
+/* State: city — larger ring */
+.vertex.city {
+  r: 11;
+  stroke-width: 2.5;
+}
+
+
+/* ================================================================
+   PORT LABELS  (ocean ring — used in a future phase)
+   ================================================================ */
+
+.port-label {
+  font-family: 'Georgia', serif;
+  font-size: 9px;
+  fill: var(--sand);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+#place-prompt {
+  position: fixed;
+  z-index: 100;
+  background: #2c1a0e;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  gap: 6px;
+}
+
+#place-prompt button {
+  background: transparent;
+  color: #f5ead0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#place-prompt #cancel-village {
+  background: #5a2a1a;
+}
+
+.village-icon {
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+#resource-hud {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: linear-gradient(to top, rgba(26,20,10,0.95), transparent);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px 16px 20px;
+  pointer-events: none;
+}
+
+.resource {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-family: 'Georgia', serif;
+  font-size: 1.4rem;
+}
+
+.resource span {
+  font-size: 0.85rem;
+  color: var(--sand);
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  padding: 1px 7px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.resource.updated span {
+  color: var(--gold);
+  transition: color 0.3s ease;
+}
+
+#dice-display {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+#dice-display span {
+  font-size: 1.6rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+}
+
+#game-message {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(44, 26, 14, 0.92);
+  border: 1px solid var(--red-token);
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  padding: 8px 18px;
+  border-radius: 10px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+#game-message.visible {
+  opacity: 1;
+}
+
+#place-prompt button:disabled {
+  background: #4a3a2a;
+  color: #8a7a6a;
+  cursor: default;
+}
+
+#trade-open-btn {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 20;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#trade-panel {
+  position: fixed;
+  bottom: 130px;
+  right: 16px;
+  z-index: 30;
+  background: rgba(44, 26, 14, 0.97);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 200px;
+}
+
+#trade-panel.open {
+  display: flex;
+}
+
+#trade-title {
+  color: var(--gold);
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+#trade-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trade-label {
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+}
+
+#trade-give, #trade-get {
+  background: #3a2010;
+  color: var(--sand);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+}
+
+#trade-btn {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 6px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+}
+
+#trade-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--sand);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+#discard-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  background: rgba(44, 26, 14, 0.98);
+  border: 1px solid var(--red-token);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#discard-title {
+  color: var(--red-token);
+  font-family: 'Georgia', serif;
+  font-size: 1rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+#discard-remaining {
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.discard-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  gap: 6px;
+}
+
+.discard-have {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.discard-minus, .discard-plus {
+  background: #3a2010;
+  color: var(--sand);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.discard-val {
+  min-width: 16px;
+  text-align: center;
+}
+
+#discard-confirm {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+#discard-confirm:disabled {
+  background: #4a3a2a;
+  color: #8a7a6a;
+  cursor: default;
+}
+
+#player-name {
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  transition: color 0.3s ease;
+}
+
+#discard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 49; /* just below discard-panel which is 50 */
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  display: none;
+}
+
+#discard-overlay.active {
+  display: block;
+}
+
+/* Highlight tiles as valid robber targets */
+.hex-group.robber-target polygon:first-child {
+  filter: brightness(1.3);
+  cursor: pointer;
+}
+
+/* Port mouth ring sits below vertex dot visually */
+.port-marker {
+  opacity: 0.85;
+}
+
+#dev-buy-btn, #dev-hand-btn {
+  position: fixed;
+  bottom: 80px;
+  z-index: 20;
+  pointer-events: all;
+}
+
+#dev-buy-btn {
+  left: 10px;
+}
+
+#dev-hand-btn {
+  left: 110px;
+}
+
+#dev-panel {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26,20,10,0.97);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 60;
+  min-width: 260px;
+}
+
+#dev-title {
+  color: var(--gold);
+  font-family: 'Georgia', serif;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.dev-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(200,146,42,0.2);
+}
+
+.dev-card-label {
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+}
+
+.dev-new {
+  opacity: 0.4;
+}
+
+.dev-play-btn {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.dev-play-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#dev-close {
+  margin-top: 12px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  font-family: 'Georgia', serif;
+}
+
+#yop-panel, #monopoly-panel {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26,20,10,0.97);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 60;
+  min-width: 260px;
+  text-align: center;
+}
+
+#yop-title, #monopoly-title {
+  color: var(--gold);
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+#yop-remaining {
+  color: var(--sand);
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+#yop-btns, #monopoly-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.yop-btn, .monopoly-btn {
+  background: #3a2010;
+  color: var(--sand);
+  border: 1px solid #6a4a2a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#yop-confirm {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+}
+
+#steal-panel {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26,20,10,0.97);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 60;
+  min-width: 200px;
+  text-align: center;
+}
+
+#steal-title {
+  color: var(--gold);
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+#steal-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.steal-btn {
+  background: transparent;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+#largest-army-badge {
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  color: var(--sand);
+  transition: color 0.3s ease;
+}
+
+#dev-deck-count {
+  position: fixed;
+  bottom: 60px;
+  left: 220px;
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  z-index: 20;
+}
+
+/* Roll Dice button — same weight as End Turn, sits beside it in the HUD */
+#roll-dice-btn {
+  pointer-events: all;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: 10px;
+  display: none; /* shown by JS when it's time to roll */
+}
+
+#roll-dice-btn:active {
+  filter: brightness(0.85);
+}
+
+/* ================================================================
+   ROLL OVERLAY — brief fullscreen result after dice roll
+   ================================================================ */
+
+#roll-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(10, 8, 4, 0.88);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer; /* whole screen is tappable to dismiss */
+}
+
+#roll-overlay.visible {
+  display: flex;
+}
+
+#roll-dice-display {
+  display: flex;
+  gap: 20px;
+}
+
+#roll-die-1,
+#roll-die-2 {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+#roll-total {
+  font-family: 'Georgia', serif;
+  font-size: 2rem;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+
+#roll-earners {
+  font-family: 'Georgia', serif;
+  font-size: 0.95rem;
+  color: var(--sand);
+  text-align: center;
+  line-height: 1.7;
+  min-height: 1.7em; /* keeps layout stable when empty */
+}
+
+#roll-tap-hint {
+  font-family: 'Georgia', serif;
+  font-size: 0.72rem;
+  color: var(--sand);
+  opacity: 0.45;
+  letter-spacing: 0.1em;
+  margin-top: 6px;
+}
+/*fisherman*/
+
+#fish-market-btn {
+  position: fixed;
+  bottom: 120px;
+  right: 16px;
+  z-index: 20;
+  background: #1a5a3a;
+  color: #a8e6c0;
+  border: 1px solid #2ecc71;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: 'Georgia', serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#fish-market-panel {
+  position: fixed;
+  bottom: 170px;
+  right: 16px;
+  z-index: 30;
+  background: rgba(44, 26, 14, 0.97);
+  border: 1px solid #2ecc71;
+  border-radius: 12px;
+  padding: 14px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#fish-market-title {
+  color: #a8e6c0;
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.fish-action-btn {
+  width: 100%;
+  background: #3a2010;
+  color: var(--sand);
+  border: 1px solid #6a4a2a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: 'Georgia', serif;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fish-action-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#fish-close {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  border-radius: 6px;
+  padding: 4px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+#shoe-panel {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26,20,10,0.97);
+  border: 1px solid #2ecc71;
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 60;
+  min-width: 200px;
+  text-align: center;
+}
+
+#shoe-title {
+  color: #a8e6c0;
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+#fish-token-display {
+  color: var(--sand);
+  font-family: 'Georgia', serif;
+  font-size: 0.78rem;
+  text-align: center;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
