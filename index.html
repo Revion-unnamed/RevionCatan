@@ -1,47 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Revion Catan Game</title>
+    <title>Revion Catan</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="game.js" defer></script>
 </head>
 <body>
-    <header>
-        <h1>Revion Catan Game</h1>
-        <div id="hud">
-            <!-- HUD elements here -->
+    <div id="start-screen">
+        <h1>Welcome to Revion Catan!</h1>
+        <button id="start-game">Start Game</button>
+    </div>
+    <div id="hud" style="display:none;">
+        <div id="resources">
+            <p>Resources: <span id="resource-count">10</span></p>
         </div>
-    </header>
-    <main>
-        <div id="board-wrap">
-            <!-- Original game board structure here -->
+        <div id="trade-panel" style="display:none;">
+            <p>Trade Options</p>
         </div>
-    </main>
-    <footer>
-        <p>Game Footer Information</p>
-    </footer>
+    </div>
+    <div id="board-wrap">
+        <canvas id="game-board"></canvas>
+    </div>
+    <div id="mobile-debug-console" style="display:none; position: fixed; bottom: 0; left: 0; width: 100%; max-height: 200px; background-color: #333; color: green; overflow-y: auto; z-index: 1000;">
+        <pre id="console-output"></pre>
+    </div>
     <script>
-        // Original game scripts here
+        const consoleOutput = document.getElementById('console-output');
+        const mobileDebugConsole = document.getElementById('mobile-debug-console');
 
-        // Mobile Debug Console
-        const debugConsole = document.createElement('div');
-        debugConsole.style.position = 'fixed';
-        debugConsole.style.bottom = '0';
-        debugConsole.style.left = '0';
-        debugConsole.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        debugConsole.style.color = 'white';
-        debugConsole.style.width = '100%';
-        debugConsole.style.zIndex = '100';
-        debugConsole.innerText = 'Debug Console';
-        document.body.appendChild(debugConsole);
+        const toggleDebugConsole = () => {
+            mobileDebugConsole.style.display = mobileDebugConsole.style.display === 'none' ? 'block' : 'none';
+        };
 
-        function logDebugInfo(message) {
-            debugConsole.innerText += '\n' + message;
-        }
+        const showDebugConsole = () => {
+            mobileDebugConsole.style.display = 'block';
+            mobileDebugConsole.scrollTop = mobileDebugConsole.scrollHeight;
+        };
 
-        // Use logDebugInfo in your game logic to output debug statements
-        logDebugInfo('Game Loaded');
+        const log = console.log;
+        const error = console.error;
+
+        console.log = function(...args) {
+            log.apply(console, args);
+            consoleOutput.innerText += args.join(' ') + '\n';
+        };
+
+        console.error = function(...args) {
+            error.apply(console, args);
+            consoleOutput.innerText += '\u001b[31m' + args.join(' ') + '\u001b[0m' + '\n';
+            showDebugConsole();
+        };
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 3) {
+                toggleDebugConsole();
+            }
+        });
     </script>
 </body>
 </html>
