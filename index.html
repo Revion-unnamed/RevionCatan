@@ -1,63 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Revion Catan</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="game.js" defer></script>
+  <meta charset="UTF-8" />
+  <!--
+    Disable user scaling for mobile — we handle touch interactions manually.
+    maximum-scale=1.0 prevents iOS from zooming on input focus.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Catan</title>
+
+  <!-- External stylesheet -->
+  <link rel="stylesheet" href="catan.css" />
 </head>
 <body>
-    <div id="start-screen">
-        <h1>Welcome to Revion Catan!</h1>
-        <button id="start-game">Start Game</button>
+
+  <!-- ============================================================
+       HUD — top bar with game title and current phase label.
+       Phase label will be updated by JS as the game progresses.
+       ============================================================ -->
+  <div id="start-screen">
+  <div id="start-panel">
+    <h1 id="start-title">CATAN</h1>
+    <div class="start-section">
+      <div class="start-label">Players</div>
+      <div id="player-count-btns">
+        <button class="count-btn active" data-count="1">1</button>
+        <button class="count-btn" data-count="2">2</button>
+        <button class="count-btn" data-count="3">3</button>
+        <button class="count-btn" data-count="4">4</button>
+      </div>
     </div>
-    <div id="hud" style="display:none;">
-        <div id="resources">
-            <p>Resources: <span id="resource-count">10</span></p>
-        </div>
-        <div id="trade-panel" style="display:none;">
-            <p>Trade Options</p>
-        </div>
+    <div class="start-section">
+      <div class="start-label">Game Mode</div>
+      <div id="mode-btns">
+        <button class="mode-btn active" data-mode="classic">Classic</button>
+        <button class="mode-btn" data-mode="explorers">⚓ Explorers & Pirates</button>
+        <button class="mode-btn" data-mode="cities" disabled>Cities & Knights</button>
+      </div>
     </div>
-    <div id="board-wrap">
-        <canvas id="game-board"></canvas>
+    <div class="start-section">
+  <div class="start-label">Victory Points to Win</div>
+  <div id="vp-btns">
+    <button class="vp-btn" data-vp="8">8</button>
+    <button class="vp-btn active" data-vp="10">10</button>
+    <button class="vp-btn" data-vp="12">12</button>
+  </div>
+</div>
+    <div class="start-section">
+      <div class="start-label">Scenarios</div>
+      <button class="scenario-btn" id="fishermen-toggle" data-active="false">🎣 Fishermen of Catan</button>
     </div>
-    <div id="mobile-debug-console" style="display:none; position: fixed; bottom: 0; left: 0; width: 100%; max-height: 200px; background-color: #333; color: green; overflow-y: auto; z-index: 1000;">
-        <pre id="console-output"></pre>
+    <button id="start-btn">Start Game</button>
+  </div>
+</div>
+  
+      <div id="victory-screen">
+  <div id="victory-panel">
+    <div id="victory-crown">👑</div>
+    <div id="victory-name"></div>
+    <div id="victory-sub">has won Catan!</div>
+    <div id="victory-vp"></div>
+    <button id="victory-restart">Play Again</button>
+  </div>
+</div>
+  
+  <div id="hud">
+    <h1>Catan</h1>
+    <span id="player-name"></span>
+    <span id="vp-display">0 VP</span>
+    <span id="longest-road-badge" style="display:none">🛤️ <span id="lr-count">0</span></span>
+    <span id="largest-army-badge" style="display:none">⚔️ <span id="la-count">0</span></span>
+    <div id="dice-display">
+  <span id="die-1">⚀</span>
+  <span id="die-2">⚀</span>
+</div>
+    <span id="turn-label">Turn 1</span>
+<button id="roll-dice-btn">🎲 Roll Dice</button>
+<button id="end-turn-btn">End Turn</button>
+  </div>
+
+  <div id="resource-hud">
+  <div class="resource" id="res-lumber">🌲 <span>0</span></div>
+    <div class="resource" id="res-brick">🧱 <span>0</span></div>
+  <div class="resource" id="res-wool">🐑 <span>0</span></div>
+  <div class="resource" id="res-grain">🌾 <span>0</span></div>
+  <div class="resource" id="res-ore">⛰️ <span>0</span></div>
+</div>
+  
+  <div id="game-message"></div>
+  
+  <div id="trade-panel">
+  <div id="trade-title">🏦 Bank Trade (4:1)</div>
+  <div id="trade-row">
+    <div class="trade-label">Give 4×</div>
+    <select id="trade-give">
+      <option value="Lumber">🌲 Lumber</option>
+      <option value="Brick">🧱 Brick</option>
+      <option value="Wool">🐑 Wool</option>
+      <option value="Grain">🌾 Grain</option>
+      <option value="Ore">⛰️ Ore</option>
+    </select>
+  </div>
+  <div id="trade-row">
+    <div class="trade-label">Get 1×</div>
+    <select id="trade-get">
+      <option value="Lumber">🌲 Lumber</option>
+      <option value="Brick">🧱 Brick</option>
+      <option value="Wool">🐑 Wool</option>
+      <option value="Grain">🌾 Grain</option>
+      <option value="Ore">⛰️ Ore</option>
+    </select>
+  </div>
+  <button id="trade-btn">Trade</button>
+  <button id="trade-close">✕</button>
+</div>
+<button id="trade-open-btn">🏦 Trade</button>
+  <button id="fish-market-btn" style="display:none">🐟 Fish (0)</button>
+  <button id="dev-buy-btn">🎴 Buy Dev</button>
+<button id="dev-hand-btn">🃏 Hand</button>
+  <span id="dev-deck-count">🎴 25</span>
+ 
+  
+  <!-- ============================================================
+       BOARD WRAP — centres the SVG on all screen sizes.
+       The SVG itself is populated entirely by catan.js.
+       ============================================================ -->
+  <div id="board-wrap">
+    <!--
+      viewBox="0 0 500 520" defines the SVG internal coordinate space.
+      All JS geometry calculations are relative to this viewport.
+    -->
+    <svg id="board-svg" viewBox="-400 -300 1200 1000" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <!-- Game logic and rendering — loaded last so DOM is ready -->
+  <script src="catan.js"></script>
+  <script src="fishermen.js"></script>
+  <script src="explorers.js"></script>
+
+  <div id="discard-overlay"></div>
+
+  <!-- Roll result overlay — shown briefly after each dice roll -->
+  <div id="roll-overlay">
+    <div id="roll-dice-display">
+      <span id="roll-die-1"></span>
+      <span id="roll-die-2"></span>
     </div>
-    <script>
-        const consoleOutput = document.getElementById('console-output');
-        const mobileDebugConsole = document.getElementById('mobile-debug-console');
+    <div id="roll-total"></div>
+    <div id="roll-earners"></div>
+    <div id="roll-tap-hint">tap to continue</div>
+  </div>
 
-        const toggleDebugConsole = () => {
-            mobileDebugConsole.style.display = mobileDebugConsole.style.display === 'none' ? 'block' : 'none';
-        };
-
-        const showDebugConsole = () => {
-            mobileDebugConsole.style.display = 'block';
-            mobileDebugConsole.scrollTop = mobileDebugConsole.scrollHeight;
-        };
-
-        const log = console.log;
-        const error = console.error;
-
-        console.log = function(...args) {
-            log.apply(console, args);
-            consoleOutput.innerText += args.join(' ') + '\n';
-        };
-
-        console.error = function(...args) {
-            error.apply(console, args);
-            consoleOutput.innerText += '\u001b[31m' + args.join(' ') + '\u001b[0m' + '\n';
-            showDebugConsole();
-        };
-
-        document.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 3) {
-                toggleDebugConsole();
-            }
-        });
-    </script>
 </body>
 </html>
