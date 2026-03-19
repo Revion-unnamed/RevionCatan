@@ -1,46 +1,47 @@
-<script>
-    // Mobile debug console functionality
-    (function() {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revion Catan Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Revion Catan Game</h1>
+        <div id="hud">
+            <!-- HUD elements here -->
+        </div>
+    </header>
+    <main>
+        <div id="board-wrap">
+            <!-- Original game board structure here -->
+        </div>
+    </main>
+    <footer>
+        <p>Game Footer Information</p>
+    </footer>
+    <script>
+        // Original game scripts here
+
+        // Mobile Debug Console
         const debugConsole = document.createElement('div');
         debugConsole.style.position = 'fixed';
         debugConsole.style.bottom = '0';
         debugConsole.style.left = '0';
+        debugConsole.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        debugConsole.style.color = 'white';
         debugConsole.style.width = '100%';
-        debugConsole.style.height = '200px';
-        debugConsole.style.backgroundColor = 'black';
-        debugConsole.style.color = 'green';
-        debugConsole.style.overflowY = 'scroll';
-        debugConsole.style.zIndex = '9999';
-        debugConsole.style.display = 'none';
+        debugConsole.style.zIndex = '100';
+        debugConsole.innerText = 'Debug Console';
         document.body.appendChild(debugConsole);
-        
-        const originalLog = console.log;
-        console.log = function(...args) {
-            originalLog.apply(console, args);
-            const message = args.join(' ');
-            const logEntry = document.createElement('div');
-            logEntry.textContent = message;
-            debugConsole.appendChild(logEntry);
-            debugConsole.scrollTop = debugConsole.scrollHeight;
-        };
-        
-        // Error handling
-        window.onerror = function(message, source, lineno, colno, error) {
-            console.log('Error: ' + message + ' at ' + source + ':' + lineno + ':' + colno);
-            debugConsole.style.display = 'block';
-        };
-        
-        // Toggle console with three-finger tap
-        let touchCount = 0;
-        document.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 3) {
-                touchCount++;
-                if (touchCount % 2 === 1) {
-                    debugConsole.style.display = 'block';
-                } else {
-                    debugConsole.style.display = 'none';
-                }
-            }
-        });
-    })();
-</script>
+
+        function logDebugInfo(message) {
+            debugConsole.innerText += '\n' + message;
+        }
+
+        // Use logDebugInfo in your game logic to output debug statements
+        logDebugInfo('Game Loaded');
+    </script>
+</body>
+</html>
