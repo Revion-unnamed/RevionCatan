@@ -2390,7 +2390,11 @@ renderFisheries();
     if (gamePhase !== 'play') { showMessage('⚠️ Cannot play dev cards during setup'); return; }
     renderDevHand();
   });
-  document.getElementById('fish-market-btn').addEventListener('click', () => {
+ 
+document.getElementById('reset-btn').addEventListener('click', () => {
+    location.reload();
+  });
+ document.getElementById('fish-market-btn').addEventListener('click', () => {
   if (gamePhase !== 'play') return;
   const panel = document.getElementById('fish-market-panel');
   if (panel) { panel.remove(); return; }
