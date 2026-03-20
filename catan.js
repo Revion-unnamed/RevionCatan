@@ -1015,7 +1015,11 @@ function nextPlayer() {
   devCardPlayedThisTurn = false;
 
   // Cards bought last turn are now playable
-  activePlayer().newDevCards.clear();
+  // Cards bought last turn are now playable — Classic only
+  if (GAME_CONFIG.mode === 'classic') {
+    activePlayer().newDevCards.clear();
+  }
+  
   currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
   updateHudForPlayer(activePlayer());
 }
