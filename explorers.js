@@ -180,9 +180,34 @@ function epGetReachableEdges(ship) {
  * epMoveShip — moves a ship to a new edge.
  * TODO: implement in Phase 4.
  */
-function epMoveShip(ship, targetEdgeKey) {
-  // Placeholder — Phase 4
+ function epMoveShip(ship, targetEdgeKey) {
+  epClearHighlights();
+
+  // Update ship state
+  activePlayer().ships.delete(ship.edgeKey);
+  ship.edgeKey = targetEdgeKey;
+  ship.movesLeft--;
+  activePlayer().ships.add(targetEdgeKey);
+
+  // Update SVG
+  epUpdateShipSVG(ship);
+
+  // Check for tile discovery at the new edge endpoints
+  epCheckDiscovery(targetEdgeKey);
+
+  // If moves remain, re-highlight from new position
+  if (ship.movesLeft > 0) {
+    epSelectedShip = ship;
+    const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
+    if (shipEl) shipEl.classList.add('ship-selected');
+    const reachable = epGetReachableEdges(ship);
+    epHighlightEdges(reachable, activePlayer().color);
+  } else {
+    epSelectedShip = null;
+    showMessage('⛵ Ship movement complete');
+  }
 }
+
 
 /* ================================================================
    EP SECTION 3B · SHIP RENDERING
@@ -285,11 +310,69 @@ function epUpdateShipSVG(ship) {
 /**
  * epOnShipClick — stub for Phase 4 movement.
  */
-function epOnShipClick(ship) {
+ function epOnShipClick(ship) {
   if (ship.playerId !== activePlayer().id) return;
-  // Phase 4: highlight reachable edges and allow movement
-  console.log(`[E&P] Ship clicked: ${ship.id} on edge ${ship.edgeKey}`);
+  if (!epInMovement) return; // movement phase must be active
+
+  // Deselect if clicking the same ship again
+  if (epSelectedShip && epSelectedShip.id === ship.id) {
+    epClearHighlights();
+    epSelectedShip = null;
+    return;
+  }
+
+  epClearHighlights();
+  epSelectedShip = ship;
+
+  // Highlight the selected ship
+  const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
+  if (shipEl) shipEl.classList.add('ship-selected');
+
+  if (ship.movesLeft === 0) {
+    showMessage('⚠️ This ship has no moves left');
+    return;
+  }
+
+  // Highlight reachable edges
+  const reachable = epGetReachableEdges(ship);
+  epHighlightEdges(reachable, activePlayer().color);
 }
+
+function epHighlightEdges(edgeKeys, color) {
+  edgeKeys.forEach(key => {
+    const line = document.querySelector(`line[data-key="${key}"]`);
+    if (!line) return;
+    line.classList.add('ep-reachable');
+    line.style.stroke       = color;
+    line.style.strokeWidth  = '4';
+    line.style.opacity      = '0.7';
+
+    // Wire move handler — once only
+    line._epMoveHandler = () => {
+      if (!epSelectedShip) return;
+      epMoveShip(epSelectedShip, key);
+    };
+    line.addEventListener('click', line._epMoveHandler);
+  });
+}
+
+function epClearHighlights() {
+  document.querySelectorAll('.ep-reachable').forEach(line => {
+    line.classList.remove('ep-reachable');
+    line.style.stroke      = '';
+    line.style.strokeWidth = '';
+    line.style.opacity     = '';
+    if (line._epMoveHandler) {
+      line.removeEventListener('click', line._epMoveHandler);
+      delete line._epMoveHandler;
+    }
+  });
+  // Deselect ship visual
+  document.querySelectorAll('.ship-selected').forEach(el => {
+    el.classList.remove('ship-selected');
+  });
+}
+
 
 /**
  * epRenderAllShips — renders all ships currently in epShips array.
@@ -299,6 +382,54 @@ function epRenderAllShips() {
   epShips.forEach(s => epRenderShip(s));
 }
 
+/**
+ * epRenderFaceDownTiles — draws a grey hex overlay over every
+ * undiscovered tile. Each overlay is tagged with data-facedown-key
+ * so epRevealTile() can find and remove it by coord.
+ */
+function epRenderFaceDownTiles() {
+  const svg = document.getElementById('board-svg');
+
+  // Insert a dedicated layer just above the tile layer, below edges
+  let layer = document.getElementById('facedown-layer');
+  if (!layer) {
+    layer = svgEl('g', { id: 'facedown-layer' });
+    // Insert before edges-layer so it sits under edges and ships
+    const edgesLayer = document.getElementById('edges-layer');
+    svg.insertBefore(layer, edgesLayer);
+  }
+
+  landTileCache.filter(t => !t.discovered).forEach(tile => {
+    const { x, y } = hexToPixel(tile.q, tile.r);
+    const corners  = hexCorners(x, y, HEX_SIZE);
+    const pts      = cornersToPoints(corners);
+
+    // Dark grey polygon covers the tile completely
+    const overlay = svgEl('polygon', {
+      points:           pts,
+      fill:             '#2a2a3a',
+      stroke:           '#3a3a5a',
+      'stroke-width':   2,
+      'pointer-events': 'none',
+      'data-facedown':  `${tile.q},${tile.r}`,
+    });
+    layer.appendChild(overlay);
+
+    // Question mark to signal unexplored
+    const label = svgEl('text', {
+      x:                   x.toFixed(2),
+      y:                   y.toFixed(2),
+      'text-anchor':       'middle',
+      'dominant-baseline': 'central',
+      'font-size':         '18',
+      fill:                '#5a5a7a',
+      'pointer-events':    'none',
+      'data-facedown-lbl': `${tile.q},${tile.r}`,
+    });
+    label.textContent = '?';
+    layer.appendChild(label);
+  });
+}
 /**
  * epPlaceShip — places a ship on an edge for the active player.
  * Deducts build cost (1 Lumber + 1 Wool) unless free is true.
@@ -335,18 +466,61 @@ function epPlaceShip(edgeKey, free = false) {
  * epCheckDiscovery — checks if a ship reveals any tiles.
  * TODO: implement in Phase 5.
  */
-function epCheckDiscovery(edgeKey) {
-  // Placeholder — Phase 5
+ function epCheckDiscovery(edgeKey) {
+  // Get both endpoint vertex keys of this edge
+  const line = document.querySelector(`line[data-key="${edgeKey}"]`);
+  if (!line) return;
+
+  const ax = parseFloat(line.getAttribute('x1'));
+  const ay = parseFloat(line.getAttribute('y1'));
+  const bx = parseFloat(line.getAttribute('x2'));
+  const by = parseFloat(line.getAttribute('y2'));
+
+  const endpointKeys = [
+    `${roundCoord(ax)},${roundCoord(ay)}`,
+    `${roundCoord(bx)},${roundCoord(by)}`,
+  ];
+
+  // Check every undiscovered land tile
+  landTileCache.filter(t => !t.discovered).forEach(tile => {
+    const { x, y } = hexToPixel(tile.q, tile.r);
+    const corners  = hexCorners(x, y, HEX_SIZE);
+
+    const touches = corners.some(c =>
+      endpointKeys.includes(`${roundCoord(c.x)},${roundCoord(c.y)}`)
+    );
+
+    if (touches) epRevealTile(tile);
+  });
 }
+
 
 /**
  * epRevealTile — flips a face-down tile face-up and re-renders it.
  * TODO: implement in Phase 5.
  */
-function epRevealTile(tile) {
+ function epRevealTile(tile) {
   tile.discovered = true;
-  // TODO: re-render tile, award 1 gold to activePlayer()
+
+  // Remove the face-down overlay and label for this tile
+  document.querySelector(`[data-facedown="${tile.q},${tile.r}"]`)?.remove();
+  document.querySelector(`[data-facedown-lbl="${tile.q},${tile.r}"]`)?.remove();
+
+  // Re-render the tile face-up into the SVG
+  const svg = document.getElementById('board-svg');
+
+  // Remove the old hex-group for this tile and re-render it
+  const oldGroup = svg.querySelector(
+    `.hex-group[data-q="${tile.q}"][data-r="${tile.r}"]`
+  );
+  if (oldGroup) oldGroup.remove();
+  renderTile(svg, tile);
+
+  // Award 1 gold to the discovering player
+  activePlayer().gold = (activePlayer().gold || 0) + 1;
+  showMessage(`🗺️ New land discovered! +1 gold`, 3000);
 }
+
 
 
 /* ================================================================
@@ -361,8 +535,9 @@ function epInitBoard() {
 
   // Remove port markers and lines — E&P has no classic ports
   document.querySelectorAll('.port-marker').forEach(el => el.remove());
+  // Render face-down overlays over undiscovered tiles
+  epRenderFaceDownTiles();
 epRenderAllShips();
-  // TODO Phase 1: render face-down backs over undiscovered tiles
   // TODO Phase 6: place starting harbor settlements, settler ships, roads
 }
 
@@ -373,6 +548,7 @@ epRenderAllShips();
 
 let epHasRolled  = false;
 let epInMovement = false;
+let epSelectedShip = null; // the ship currently selected for movement
 
 
 /* ================================================================
@@ -507,6 +683,8 @@ function epInit() {
           processDiscardQueue();
         }
       }
+      // After roll: show Move Ships and End Turn
+      document.getElementById('move-ships-btn').style.display = 'inline-block';
       document.getElementById('end-turn-btn').style.display = 'inline-block';
       updateHudForPlayer(activePlayer());
     });
@@ -517,6 +695,10 @@ function epInit() {
   window.runEndTurn = function() {
     epHasRolled  = false;
     epInMovement = false;
+    epClearHighlights();
+    epSelectedShip = null;
+    document.getElementById('move-ships-btn').style.display  = 'none';
+    document.getElementById('move-ships-btn').textContent    = '⛵ Move';
 
     // Reset ship movement points for active player
     epShips
