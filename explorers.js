@@ -374,6 +374,12 @@ function epClearHighlights() {
       line.removeEventListener('click', line._epMoveHandler);
       delete line._epMoveHandler;
     }
+    const hitArea = line.previousElementSibling;
+    if (hitArea && hitArea._epMoveHandler) {
+      hitArea.removeEventListener('click', hitArea._epMoveHandler);
+      delete hitArea._epMoveHandler;
+    }
+    
   });
   // Deselect ship visual
   document.querySelectorAll('.ship-selected').forEach(el => {
@@ -543,6 +549,10 @@ function epInitBoard() {
   if (!document.getElementById('ships-layer')) {
     svg.appendChild(svgEl('g', { id: 'ships-layer' }));
   }
+  // Remove any stray text elements sitting above ships-layer (port label remnants)
+  [...svg.children].forEach(el => {
+    if (el.tagName === 'text') el.remove();
+  });
   console.log(`[E&P] Sea edges: ${epSeaEdges.size}`);
   console.log(`[E&P] Adjacency entries: ${epEdgeAdjacency.size}`);
 
