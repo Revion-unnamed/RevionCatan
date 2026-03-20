@@ -2412,6 +2412,7 @@ renderFisheries();
   // --- Roll Dice button ---
   document.getElementById('roll-dice-btn').addEventListener('click', runRollDice);
 
+applyPlayerExtensions();
 buildScoreboard();
   buildSetupOrder();
   buildDevDeck();
