@@ -229,32 +229,54 @@ function roundCoord(n) {
 function dieFace(n) {
   return String.fromCodePoint(9855 + n);
 }
+/**
+ * svgToScreen — converts an SVG internal coordinate to a screen pixel position,
+ * accounting for the current zoom/pan transform on #board-wrap.
+ */
+function svgToScreen(svgX, svgY) {
+  const svg  = document.getElementById('board-svg');
+  const rect = svg.getBoundingClientRect();
+  const vb   = svg.viewBox.baseVal;
+
+  // SVG coordinate → fraction of viewBox → pixel within SVG element
+  // Then apply the board-wrap zoom transform
+  const svgPixelX = ((svgX - vb.x) / vb.width)  * (rect.width  / zoomScale);
+  const svgPixelY = ((svgY - vb.y) / vb.height) * (rect.height / zoomScale);
+
+  // Apply zoom and translate to get final screen position
+  const screenX = svgPixelX * zoomScale + zoomTranslateX + rect.left;
+  const screenY = svgPixelY * zoomScale + zoomTranslateY + rect.top;
+
+  return { x: screenX, y: screenY };
+}
+// Zoom state — module scope so prompt positioning can read it
+let zoomScale      = 1;
+let zoomTranslateX = 0;
+let zoomTranslateY = 0;
 
 function initZoom() {
   let lastDist   = null;
-  let scale      = 1;
-  let translateX = 0;
-  let translateY = 0;
   let dragStartX = null;
   let dragStartY = null;
 
+
   const wrap = document.getElementById('board-wrap');
 
-  function applyTransform() {
-    wrap.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+function applyTransform() {
+    wrap.style.transform = `translate(${zoomTranslateX}px, ${zoomTranslateY}px) scale(${zoomScale})`;
   }
 
   wrap.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
-    dragStartX = e.touches[0].clientX - translateX;
-    dragStartY = e.touches[0].clientY - translateY;
+    dragStartX = e.touches[0].clientX - zoomTranslateX;
+    dragStartY = e.touches[0].clientY - zoomTranslateY;
   });
 
   wrap.addEventListener('touchmove', (e) => {
     e.preventDefault();
     if (e.touches.length === 1 && dragStartX !== null) {
-      translateX = e.touches[0].clientX - dragStartX;
-      translateY = e.touches[0].clientY - dragStartY;
+      zoomTranslateX = e.touches[0].clientX - dragStartX;
+      zoomTranslateY = e.touches[0].clientY - dragStartY;
       applyTransform();
     }
     if (e.touches.length === 2) {
@@ -262,7 +284,7 @@ function initZoom() {
       const dy   = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (lastDist !== null) {
-        scale = Math.min(Math.max(scale * dist / lastDist, 0.5), 3);
+        zoomScale = Math.min(Math.max(zoomScale * dist / lastDist, 0.5), 3);
         applyTransform();
       }
       lastDist = dist;
@@ -1209,14 +1231,9 @@ function onVertexClick(v) {
 
   document.getElementById('place-prompt')?.remove();
 
-const svg     = document.getElementById('board-svg');
-  const rect    = svg.getBoundingClientRect();
-  const vb      = svg.viewBox.baseVal;
-  const scaleX  = rect.width  / vb.width;
-  const scaleY  = rect.height / vb.height;
-  const screenX = rect.left + (v.x - vb.x) * scaleX;
-  const screenY = rect.top  + (v.y - vb.y) * scaleY;
-  
+const { x: screenX, y: screenY } = svgToScreen(v.x, v.y);
+
+
   const prompt = document.createElement('div');
   prompt.id = 'place-prompt';
   prompt.innerHTML = hasVillage
@@ -1254,16 +1271,11 @@ function onEdgeClick(edge) {
 
   document.getElementById('place-prompt')?.remove();
 
-const svg    = document.getElementById('board-svg');
-  const rect   = svg.getBoundingClientRect();
-  const vb     = svg.viewBox.baseVal;
-  const scaleX = rect.width  / vb.width;
-  const scaleY = rect.height / vb.height;
+const { x: mx, y: my } = svgToScreen(
+    (edge.ax + edge.bx) / 2,
+    (edge.ay + edge.by) / 2
+  );
 
-  const mx = rect.left + ((edge.ax + edge.bx) / 2 - vb.x) * scaleX;
-  const my = rect.top  + ((edge.ay + edge.by) / 2 - vb.y) * scaleY;
-  
- 
   const prompt = document.createElement('div');
   prompt.id = 'place-prompt';
   prompt.innerHTML = `<button id="confirm-road">🛤️ Place Road</button><button id="cancel-village">✕</button>`;
