@@ -303,7 +303,23 @@ transition: border-bottom 0.3s ease;
 }
 
 
+#reset-btn {
+  pointer-events: all;
+  background: transparent;
+  color: var(--sand);
+  border: 1px solid var(--sand);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: 6px;
+  opacity: 0.6;
+}
 
+#reset-btn:active {
+  opacity: 1;
+}
 /* ================================================================
    BOARD WRAPPER & SVG
    ================================================================ */
