@@ -1209,26 +1209,28 @@ function onVertexClick(v) {
 
   document.getElementById('place-prompt')?.remove();
 
-  const svg    = document.getElementById('board-svg');
-  const rect   = svg.getBoundingClientRect();
-  const vb    = svg.viewBox.baseVal;
-  const scaleX = rect.width  / vb.width;
-  const scaleY = rect.height / vb.height;
-  const offsetX = rect.left - vb.x * scaleX;
-  const offsetY = rect.top  - vb.y * scaleY;
+const svg     = document.getElementById('board-svg');
+  const rect    = svg.getBoundingClientRect();
+  const vb      = svg.viewBox.baseVal;
+  const scaleX  = rect.width  / vb.width;
+  const scaleY  = rect.height / vb.height;
+  const screenX = rect.left + (v.x - vb.x) * scaleX;
+  const screenY = rect.top  + (v.y - vb.y) * scaleY;
   
-  const screenX = offsetX + v.x * scaleX;
-  const screenY = offsetY  + v.y * scaleY;
-
   const prompt = document.createElement('div');
   prompt.id = 'place-prompt';
   prompt.innerHTML = hasVillage
     ? `<button id="confirm-city">🏙️ Upgrade City</button><button id="cancel-prompt">✕</button>`
     : `<button id="confirm-village">🏠 Place Village</button><button id="cancel-prompt">✕</button>`;
 
-  document.body.appendChild(prompt);
-  prompt.style.left = `${screenX + 10}px`;
-  prompt.style.top  = `${screenY - 20}px`;
+document.body.appendChild(prompt);
+  // Clamp so prompt never goes off screen
+  const pw = 160; // estimated prompt width
+  const left = Math.min(screenX + 10, window.innerWidth - pw - 8);
+  const top  = Math.max(screenY - 36, 60);
+  prompt.style.left = `${left}px`;
+  prompt.style.top  = `${top}px`;
+  
   prompt.querySelectorAll('button').forEach(b => {
   b.style.borderColor = activePlayer().color;
   b.style.color       = activePlayer().color;
@@ -1252,25 +1254,27 @@ function onEdgeClick(edge) {
 
   document.getElementById('place-prompt')?.remove();
 
-  const svg    = document.getElementById('board-svg');
+const svg    = document.getElementById('board-svg');
   const rect   = svg.getBoundingClientRect();
-  const vb    = svg.viewBox.baseVal;
+  const vb     = svg.viewBox.baseVal;
   const scaleX = rect.width  / vb.width;
   const scaleY = rect.height / vb.height;
-  const offsetX = rect.left - vb.x * scaleX;
-  const offsetY = rect.top  - vb.y * scaleY;
+
+  const mx = rect.left + ((edge.ax + edge.bx) / 2 - vb.x) * scaleX;
+  const my = rect.top  + ((edge.ay + edge.by) / 2 - vb.y) * scaleY;
   
-
-  // Position prompt at midpoint of the edge
-  const mx = ((edge.ax + edge.bx) / 2) * scaleX + offsetX;
-  const my = ((edge.ay + edge.by) / 2) * scaleY + offsetY;
-
+ 
   const prompt = document.createElement('div');
   prompt.id = 'place-prompt';
   prompt.innerHTML = `<button id="confirm-road">🛤️ Place Road</button><button id="cancel-village">✕</button>`;
   document.body.appendChild(prompt);
-  prompt.style.left = `${mx + 10}px`;
-  prompt.style.top  = `${my - 20}px`;
+  const pw2  = 160;
+  const left = Math.min(mx + 10, window.innerWidth - pw2 - 8);
+  const top  = Math.max(my - 36, 60);
+  prompt.style.left = `${left}px`;
+  prompt.style.top  = `${top}px`;
+  
+
   prompt.querySelectorAll('button').forEach(b => {
   b.style.borderColor = activePlayer().color;
   b.style.color       = activePlayer().color;
