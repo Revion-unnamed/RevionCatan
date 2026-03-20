@@ -2392,6 +2392,10 @@ renderFisheries();
     tiles
   );
   renderEdges(svg, edges);
+  // Ships layer sits between edges and vertices
+  if (!document.getElementById('ships-layer')) {
+    svg.appendChild(svgEl('g', { id: 'ships-layer' }));
+  }
   renderVertices(svg, vertices);
 
   // --- End Turn button ---
