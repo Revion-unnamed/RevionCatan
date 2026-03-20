@@ -701,25 +701,44 @@ function epInit() {
   // ── Override 6: end turn ──────────────────────────────────────
   // TODO Phase 4: insert movement phase before advancing.
   window.runEndTurn = function() {
-    epHasRolled  = false;
+    // Close movement phase cleanly
     epInMovement = false;
     epClearHighlights();
     epSelectedShip = null;
-    document.getElementById('move-ships-btn').style.display  = 'none';
-    document.getElementById('move-ships-btn').textContent    = '⛵ Move';
+    epHasRolled    = false;
 
-    // Reset ship movement points for active player
+    // Reset next player's ships — do it after nextPlayer() advances index
+    currentTurn++;
+    nextPlayer(); // advances currentPlayerIndex
+    // Now activePlayer() is the NEW player — reset their ships
     epShips
       .filter(s => s.playerId === activePlayer().id)
       .forEach(s => { s.movesLeft = 4; });
 
-    currentTurn++;
-    nextPlayer();
     updateTurnLabel();
-    document.getElementById('end-turn-btn').style.display  = 'none';
-    document.getElementById('roll-dice-btn').style.display = 'inline-block';
+    document.getElementById('move-ships-btn').style.display  = 'none';
+    document.getElementById('move-ships-btn').textContent    = '⛵ Move';
+    document.getElementById('end-turn-btn').style.display    = 'none';
+    document.getElementById('roll-dice-btn').style.display   = 'inline-block';
+    
   };
 
+// ── Move Ships button ─────────────────────────────────────────
+  document.getElementById('move-ships-btn').addEventListener('click', () => {
+    if (epInMovement) {
+      // Close movement phase
+      epInMovement = false;
+      epClearHighlights();
+      epSelectedShip = null;
+      document.getElementById('move-ships-btn').textContent = '⛵ Move';
+      showMessage('Movement phase ended');
+    } else {
+      // Open movement phase
+      epInMovement = true;
+      document.getElementById('move-ships-btn').textContent = '✓ Done Moving';
+      showMessage('⛵ Tap a ship to move it');
+    }
+  });
   // ── HUD cleanup ───────────────────────────────────────────────
   // Hide Classic-only buttons that don't exist in E&P
   document.getElementById('dev-buy-btn').style.display    = 'none';
