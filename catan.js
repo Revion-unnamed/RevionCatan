@@ -546,9 +546,13 @@ function renderTile(svg, tile) {
  * @returns {{ vertices: Map, edges: Map }}
  */
 
-  function buildGraph(coordSource = LAND_COORDS) {
+  function buildGraph(coordSource = LAND_COORDS, allTiles = []) {
   const vertices = new Map(); // key → { x, y, key }
-  const edges    = new Map(); // key → { ax, ay, bx, by, key }
+  const edges    = new Map(); // key → { ax, ay, bx, by, key, isSea }
+
+  // Build tile lookup for isSea classification
+  const tileMap = new Map();
+  allTiles.forEach(t => tileMap.set(`${t.q},${t.r}`, t));
 
   for (const coord of coordSource) {
     const { x, y } = hexToPixel(coord.q, coord.r);
@@ -580,11 +584,20 @@ function renderTile(svg, tile) {
       const edgeKey = [keyA, keyB].sort().join('|');
 
       if (!edges.has(edgeKey)) {
+        const thisTile = tileMap.get(`${coord.q},${coord.r}`);
+        const isSea    = thisTile ? thisTile.isOcean : false;
         edges.set(edgeKey, {
           ax: a.x, ay: a.y,
           bx: b.x, by: b.y,
           key: edgeKey,
+          isSea,
         });
+      } else if (!edges.get(edgeKey).isSea) {
+        // Shared edge between land and ocean — upgrade to sea route
+        const thisTile = tileMap.get(`${coord.q},${coord.r}`);
+        if (thisTile && thisTile.isOcean) {
+          edges.get(edgeKey).isSea = true;
+        }
       }
     }
   }
@@ -2342,7 +2355,8 @@ renderFisheries();
 
   // --- Graph layers (edges before vertices so dots sit on top of lines) ---
   const { vertices, edges } = buildGraph(
-    typeof buildGraphCoords !== 'undefined' ? buildGraphCoords : LAND_COORDS
+    typeof buildGraphCoords !== 'undefined' ? buildGraphCoords : LAND_COORDS,
+    tiles
   );
   renderEdges(svg, edges);
   renderVertices(svg, vertices);

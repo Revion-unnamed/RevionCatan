@@ -99,21 +99,81 @@ let epShips = [];
 
 // Edge adjacency map for ship movement — built in Phase 2
 let epEdgeAdjacency = new Map();
+let epSeaEdges      = new Set(); // all sea edge keys — populated by epBuildEdgeAdjacency
 
 /**
  * epBuildEdgeAdjacency — computes sea edge adjacency.
- * TODO: implement in Phase 2.
+ * Builds full tile list, calls buildGraph with isSea tagging,
+ * then constructs BFS graph of sea edges.
  */
 function epBuildEdgeAdjacency() {
-  epEdgeAdjacency = new Map(); // Placeholder — Phase 2
+  // Build full tile list so buildGraph can tag isSea correctly
+  const allTiles = [
+    ...EP_START_COORDS.map(c  => ({ ...c, isOcean: false })),
+    ...EP_SEA_COORDS.map(c    => ({ ...c, isOcean: true  })),
+    ...EP_NORTH_COORDS.map(c  => ({ ...c, isOcean: false })),
+    ...EP_SOUTH_COORDS.map(c  => ({ ...c, isOcean: false })),
+  ];
+
+  const { edges } = buildGraph(window.buildGraphCoords, allTiles);
+
+  // Collect all sea edge keys
+  epSeaEdges = new Set();
+  edges.forEach((edge, key) => {
+    if (edge.isSea) epSeaEdges.add(key);
+  });
+
+  // Build adjacency map: sea edge → list of neighbouring sea edges
+  // Two sea edges are adjacent if they share exactly one endpoint vertex
+  epEdgeAdjacency = new Map();
+  epSeaEdges.forEach(key => epEdgeAdjacency.set(key, []));
+
+  const seaEdgeList = [...edges.values()].filter(e => epSeaEdges.has(e.key));
+
+  for (let i = 0; i < seaEdgeList.length; i++) {
+    for (let j = i + 1; j < seaEdgeList.length; j++) {
+      const a      = seaEdgeList[i];
+      const b      = seaEdgeList[j];
+      const aVerts = [`${a.ax},${a.ay}`, `${a.bx},${a.by}`];
+      const bVerts = [`${b.ax},${b.by}`, `${b.bx},${b.by}`];
+      const shared = aVerts.filter(v => bVerts.includes(v));
+      if (shared.length === 1) {
+        epEdgeAdjacency.get(a.key).push(b.key);
+        epEdgeAdjacency.get(b.key).push(a.key);
+      }
+    }
+  }
 }
 
 /**
  * epGetReachableEdges — BFS from a ship's current edge.
- * TODO: implement in Phase 2.
+ * Returns Set of edge keys reachable within ship.movesLeft steps.
+ * Excludes edges already holding 2 ships.
  */
 function epGetReachableEdges(ship) {
-  return new Set(); // Placeholder — Phase 2
+  const reachable = new Set();
+  const queue     = [{ key: ship.edgeKey, movesLeft: ship.movesLeft }];
+  const visited   = new Set([ship.edgeKey]);
+
+  while (queue.length > 0) {
+    const { key, movesLeft } = queue.shift();
+    if (movesLeft === 0) continue;
+
+    const neighbours = epEdgeAdjacency.get(key) || [];
+    for (const neighbourKey of neighbours) {
+      if (visited.has(neighbourKey)) continue;
+      visited.add(neighbourKey);
+
+      // Check occupancy — cannot END on an edge with 2 ships
+      const occupancy = epShips.filter(s => s.edgeKey === neighbourKey).length;
+      if (occupancy < 2) reachable.add(neighbourKey);
+
+      // Can still pass through a full edge (just can't stop there)
+      queue.push({ key: neighbourKey, movesLeft: movesLeft - 1 });
+    }
+  }
+
+  return reachable;
 }
 
 /**
@@ -154,6 +214,8 @@ function epRevealTile(tile) {
 
 function epInitBoard() {
   epBuildEdgeAdjacency();
+  console.log(`[E&P] Sea edges: ${epSeaEdges.size}`);
+  console.log(`[E&P] Adjacency entries: ${epEdgeAdjacency.size}`);
 
   // Remove port markers and lines — E&P has no classic ports
   document.querySelectorAll('.port-marker').forEach(el => el.remove());
