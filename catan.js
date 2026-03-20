@@ -2269,6 +2269,7 @@ function closeDevPanel() {
 }
 
 function updateHandCount() {
+  if (GAME_CONFIG.mode !== 'classic') return;
   const playable = activePlayer().devCards.filter(c => c !== 'vp').length;
   document.getElementById('dev-hand-btn').textContent =
     `🃏 Hand${playable > 0 ? ` (${playable})` : ''}`;
