@@ -538,6 +538,11 @@ function epPlaceShip(edgeKey, free = false) {
 
 function epInitBoard() {
   epBuildEdgeAdjacency();
+// Append ships layer after vertices so it sits on top and receives clicks
+  const svg = document.getElementById('board-svg');
+  if (!document.getElementById('ships-layer')) {
+    svg.appendChild(svgEl('g', { id: 'ships-layer' }));
+  }
   console.log(`[E&P] Sea edges: ${epSeaEdges.size}`);
   console.log(`[E&P] Adjacency entries: ${epEdgeAdjacency.size}`);
 
