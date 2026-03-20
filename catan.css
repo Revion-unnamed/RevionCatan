@@ -1213,3 +1213,24 @@ transition: transform 0.05s ease;
   stroke: #f5ead0;
   stroke-width: 2.5;
 }
+#move-ships-btn {
+  pointer-events: all;
+  background: #1a4a6a;
+  color: #a8d4f0;
+  border: 1px solid #2980b9;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+#move-ships-btn:active {
+  filter: brightness(0.85);
+}
+
+/* Reachable edge highlight — drawn over the standard edge style */
+line.ep-reachable {
+  stroke-linecap: round;
+}
