@@ -907,9 +907,17 @@ const players = PLAYER_CONFIGS.map((config, i) => ({
   cities:         new Set(),
   victoryPoints:  0,
   fish:           [],
-  hasShoe:        false,
-  ...buildPlayerExtensions(),
+    hasShoe:        false,
 }));
+
+/**
+ * applyPlayerExtensions — merges mode-specific fields into all player objects.
+ * Called from initBoard() after mode is confirmed, not at declaration time.
+ */
+function applyPlayerExtensions() {
+  const extensions = buildPlayerExtensions();
+  players.forEach(p => Object.assign(p, { ...extensions }));
+}
 
 // Bank starts with 19 of each resource — finite like physical Catan
 const bank = { Lumber: 19, Brick: 19, Wool: 19, Grain: 19, Ore: 19 };
