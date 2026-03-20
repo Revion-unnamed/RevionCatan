@@ -2478,4 +2478,7 @@ document.getElementById('fishermen-toggle').addEventListener('click', () => {
 // Run once the HTML is fully parsed
 document.addEventListener('DOMContentLoaded', () => {
   initStartScreen();
+document.getElementById('reset-btn').addEventListener('click', () => {
+    location.reload();
+  });
 });
