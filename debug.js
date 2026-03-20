@@ -33,7 +33,7 @@
   toggleBtn.textContent = 'Debug';
   toggleBtn.style.cssText = `
     position: fixed;
-    bottom: 10px;
+    top: 80px;
     right: 10px;
     z-index: 10000;
     background: #ff4444;
@@ -53,7 +53,7 @@
   clearBtn.textContent = 'Clear';
   clearBtn.style.cssText = `
     position: fixed;
-    bottom: 10px;
+    top: 80px;
     right: 80px;
     z-index: 10000;
     background: #444;
