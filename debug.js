@@ -34,7 +34,7 @@
   toggleBtn.style.cssText = `
     position: fixed;
     bottom: 10px;
-    left: 10px;
+    right: 10px;
     z-index: 10000;
     background: #ff4444;
     color: white;
@@ -54,7 +54,7 @@
   clearBtn.style.cssText = `
     position: fixed;
     bottom: 10px;
-    left: 80px;
+    right: 80px;
     z-index: 10000;
     background: #444;
     color: white;
