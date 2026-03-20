@@ -184,7 +184,149 @@ function epMoveShip(ship, targetEdgeKey) {
   // Placeholder — Phase 4
 }
 
+/* ================================================================
+   EP SECTION 3B · SHIP RENDERING
+   ================================================================ */
 
+/**
+ * epRenderShip — draws a ship SVG element on an edge.
+ * The ship is a small elongated shape centred on the edge midpoint,
+ * rotated to align with the edge direction.
+ * Tagged with data-ship-id for later position updates.
+ */
+function epRenderShip(ship) {
+  const svg   = document.getElementById('board-svg');
+  const layer = document.getElementById('ships-layer');
+  if (!layer) return;
+
+  // Find the edge geometry from the rendered lines
+  const line = svg.querySelector(`line[data-key="${ship.edgeKey}"]`);
+  if (!line) return;
+
+  const ax = parseFloat(line.getAttribute('x1'));
+  const ay = parseFloat(line.getAttribute('y1'));
+  const bx = parseFloat(line.getAttribute('x2'));
+  const by = parseFloat(line.getAttribute('y2'));
+
+  const mx    = (ax + bx) / 2;
+  const my    = (ay + by) / 2;
+  const angle = Math.atan2(by - ay, bx - ax) * (180 / Math.PI);
+
+  const player = players.find(p => p.id === ship.playerId);
+  const color  = player ? player.color : '#ffffff';
+
+  // Ship body — elongated rectangle
+  const body = svgEl('rect', {
+    x:              (-14).toFixed(2),
+    y:              (-5).toFixed(2),
+    width:          '28',
+    height:         '10',
+    rx:             '4',
+    fill:           color,
+    stroke:         '#2c1a0e',
+    'stroke-width': '1.5',
+    'pointer-events': 'none',
+  });
+
+  // Mast — small vertical line
+  const mast = svgEl('line', {
+    x1:             '0',
+    y1:             '-5',
+    x2:             '0',
+    y2:             '-13',
+    stroke:         '#2c1a0e',
+    'stroke-width': '1.5',
+    'pointer-events': 'none',
+  });
+
+  // Sail — small triangle
+  const sail = svgEl('polygon', {
+    points:         '0,-13 8,-7 0,-5',
+    fill:           '#f5ead0',
+    opacity:        '0.85',
+    'pointer-events': 'none',
+  });
+
+  // Group — positioned at edge midpoint and rotated
+  const g = svgEl('g', {
+    'data-ship-id':  ship.id,
+    transform:       `translate(${mx.toFixed(2)},${my.toFixed(2)}) rotate(${angle.toFixed(1)})`,
+    'pointer-events': 'all',
+    cursor:          'pointer',
+  });
+
+  g.appendChild(body);
+  g.appendChild(mast);
+  g.appendChild(sail);
+  layer.appendChild(g);
+
+  // Click handler — Phase 4 will use this for movement
+  g.addEventListener('click', (e) => {
+    e.stopPropagation();
+    epOnShipClick(ship);
+  });
+}
+
+/**
+ * epRemoveShipSVG — removes a ship's SVG element from the board.
+ */
+function epRemoveShipSVG(ship) {
+  document.querySelector(`[data-ship-id="${ship.id}"]`)?.remove();
+}
+
+/**
+ * epUpdateShipSVG — moves a ship's SVG element to a new edge.
+ */
+function epUpdateShipSVG(ship) {
+  epRemoveShipSVG(ship);
+  epRenderShip(ship);
+}
+
+/**
+ * epOnShipClick — stub for Phase 4 movement.
+ */
+function epOnShipClick(ship) {
+  if (ship.playerId !== activePlayer().id) return;
+  // Phase 4: highlight reachable edges and allow movement
+  console.log(`[E&P] Ship clicked: ${ship.id} on edge ${ship.edgeKey}`);
+}
+
+/**
+ * epRenderAllShips — renders all ships currently in epShips array.
+ * Called after board re-renders or on game load.
+ */
+function epRenderAllShips() {
+  epShips.forEach(s => epRenderShip(s));
+}
+
+/**
+ * epPlaceShip — places a ship on an edge for the active player.
+ * Deducts build cost (1 Lumber + 1 Wool) unless free is true.
+ * @param {string}  edgeKey
+ * @param {boolean} free — true for starting placement, no cost
+ */
+function epPlaceShip(edgeKey, free = false) {
+  if (!free) {
+    if (!canAfford({ Lumber: 1, Wool: 1 })) {
+      showMessage('⚠️ Need 🌲 + 🐑 to build a ship');
+      return;
+    }
+    spendResources({ Lumber: 1, Wool: 1 });
+  }
+
+  const ship = {
+    id:        `ship-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+    edgeKey,
+    playerId:  activePlayer().id,
+    hold:      null,
+    movesLeft: 0, // 0 on placement — can move next turn
+  };
+
+  epShips.push(ship);
+  activePlayer().ships.add(edgeKey);
+  epRenderShip(ship);
+  showMessage(`⛵ Ship placed`);
+}
 /* ================================================================
    EP SECTION 4 · DISCOVERY (stubs — safe at top level)
    ================================================================ */
@@ -219,7 +361,7 @@ function epInitBoard() {
 
   // Remove port markers and lines — E&P has no classic ports
   document.querySelectorAll('.port-marker').forEach(el => el.remove());
-
+epRenderAllShips();
   // TODO Phase 1: render face-down backs over undiscovered tiles
   // TODO Phase 6: place starting harbor settlements, settler ships, roads
 }
