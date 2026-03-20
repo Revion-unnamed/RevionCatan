@@ -542,9 +542,10 @@ transition: transform 0.05s ease;
   font-size: 0.85rem;
   cursor: pointer;
 }
-
-#place-prompt #cancel-village {
-  background: #5a2a1a;
+#place-prompt #cancel-village,
+#place-prompt #cancel-prompt {
+  background: transparent;
+  opacity: 0.6;
 }
 
 .village-icon {
