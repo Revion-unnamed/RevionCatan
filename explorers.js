@@ -311,25 +311,33 @@ function epUpdateShipSVG(ship) {
  * epOnShipClick — stub for Phase 4 movement.
  */
  function epOnShipClick(ship) {
-  if (ship.playerId !== activePlayer().id) return;
-  if (!epInMovement) return; // movement phase must be active
+  // Ship clicks only work during movement phase
+  if (!epInMovement) return;
 
-  // Deselect if clicking the same ship again
-  if (epSelectedShip && epSelectedShip.id === ship.id) {
-    epClearHighlights();
-    epSelectedShip = null;
+  // Only the selected ship can be clicked to deselect
+  if (epSelectedShip) {
+    if (epSelectedShip.id === ship.id) {
+      // Deselect
+      epClearHighlights();
+      epSelectedShip = null;
+    }
+    // All other ship clicks ignored while one is selected
     return;
   }
 
-  epClearHighlights();
+  // No ship selected yet — only active player's ships are selectable
+  if (ship.playerId !== activePlayer().id) return;
+
   epSelectedShip = ship;
 
-  // Highlight the selected ship
+  // Highlight the selected ship visually
   const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
   if (shipEl) shipEl.classList.add('ship-selected');
 
   if (ship.movesLeft === 0) {
     showMessage('⚠️ This ship has no moves left');
+    epSelectedShip = null;
+    if (shipEl) shipEl.classList.remove('ship-selected');
     return;
   }
 
