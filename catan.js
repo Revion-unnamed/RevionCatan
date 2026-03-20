@@ -1277,6 +1277,7 @@ document.body.appendChild(prompt);
 }
 
 function onEdgeClick(edge) {
+  if (typeof epInMovement !== 'undefined' && epInMovement) return;
   if (gamePhase !== 'play' && setupAction !== 'road') return;
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
   if (!isEdgeAvailable(edge)) return;
