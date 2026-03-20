@@ -2271,9 +2271,7 @@ function getVictoryTarget(player) {
 
 function updateVP(player, delta) {
   player.victoryPoints += delta;
-  if (player.id === activePlayer().id) {
-    document.getElementById('vp-display').textContent = `${player.victoryPoints} VP`;
-  }
+  updateScoreboard();
   checkVictory(player);
 }
 
@@ -2298,13 +2296,32 @@ function showMessage(text, duration = 2000) {
   clearTimeout(el._timeout);
   el._timeout = setTimeout(() => el.classList.remove('visible'), duration);
 }
+function buildScoreboard() {
+  const board = document.getElementById('player-scoreboard');
+  board.innerHTML = '';
+  players.forEach(p => {
+    const entry = document.createElement('span');
+    entry.className   = 'score-entry';
+    entry.id          = `score-${p.id}`;
+    entry.innerHTML   = `<span class="score-dot" style="color:${p.color}">●</span><span class="score-vp" id="score-vp-${p.id}">${p.victoryPoints}</span>`;
+    board.appendChild(entry);
+  });
+}
+
+function updateScoreboard() {
+  players.forEach(p => {
+    const el = document.getElementById(`score-vp-${p.id}`);
+    if (!el) return;
+    el.textContent = p.victoryPoints;
+    // Highlight active player entry
+    const entry = document.getElementById(`score-${p.id}`);
+    entry.classList.toggle('score-active', p.id === activePlayer().id);
+  });
+}
 
 function updateHudForPlayer(player) {
   updateTradePanel();
-
-  document.getElementById('player-name').textContent = player.name;
-  document.getElementById('player-name').style.color = player.color;
-  document.getElementById('vp-display').textContent  = `${player.victoryPoints} VP`;
+updateScoreboard();
 
   // Update resource counts in HUD using RESOURCE_CONFIG
   RESOURCE_CONFIG.forEach(({ type, id }) => {
@@ -2367,6 +2384,7 @@ renderFisheries();
   // --- Roll Dice button ---
   document.getElementById('roll-dice-btn').addEventListener('click', runRollDice);
 
+buildScoreboard();
   buildSetupOrder();
   buildDevDeck();
   currentPlayerIndex = setupOrder[0];
