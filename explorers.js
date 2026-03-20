@@ -220,7 +220,7 @@ function epRenderShip(ship) {
     x:              (-14).toFixed(2),
     y:              (-5).toFixed(2),
     width:          '28',
-    height:         '10',
+    height:         '8',
     rx:             '4',
     fill:           color,
     stroke:         '#2c1a0e',
