@@ -241,7 +241,7 @@ function epGetDistance(fromKey, toKey) {
   epUpdateShipSVG(ship);
 
   // Check for tile discovery at the new edge endpoints
-  epCheckDiscovery(targetEdgeKey);
+  epCheckDiscovery(targetEdgeKey, ship);
 
   // If moves remain, re-highlight from new position
   if (ship.movesLeft > 0) {
@@ -541,7 +541,7 @@ function epPlaceShip(edgeKey, free = false) {
  * epCheckDiscovery — checks if a ship reveals any tiles.
  * TODO: implement in Phase 5.
  */
- function epCheckDiscovery(edgeKey) {
+ function epCheckDiscovery(edgeKey, ship = null) {
   // Get both endpoint vertex keys of this edge
   const line = document.querySelector(`line[data-key="${edgeKey}"]`);
   if (!line) return;
@@ -564,8 +564,10 @@ function epPlaceShip(edgeKey, free = false) {
     const touches = corners.some(c =>
       endpointKeys.includes(`${roundCoord(c.x)},${roundCoord(c.y)}`)
     );
-
-    if (touches) epRevealTile(tile);
+if (touches) {
+      epRevealTile(tile);
+      if (ship) ship.movesLeft = 0;
+    }
   });
 }
 
