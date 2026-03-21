@@ -744,6 +744,7 @@ function epHandleVertexClick(v) {
 }
 
  function epActivateSettlerUnload(ship) {
+   console.log('epActivateSettlerUnload - ship.hold:', ship.hold, 'ship.id:', ship.id);
    epClearSettlerTargets();
   const adjVerts = epGetAdjacentVertices(ship);
 
