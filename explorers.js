@@ -816,17 +816,7 @@ function epHandleVertexClick(v) {
   });
 }
 
-    circle._epSettlerHandler = handler;
-    circle.addEventListener('click', handler);
-    circle.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      handler(e);
-      // Prevent the subsequent click event from also firing
-      circle.addEventListener('click', e => e.stopImmediatePropagation(), { once: true, capture: true });
-    });
-  });
-}
+    
 
 /* ================================================================
    EP SECTION 4 · DISCOVERY
