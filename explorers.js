@@ -135,7 +135,7 @@ function epBuildEdgeAdjacency() {
       const a      = seaEdgeList[i];
       const b      = seaEdgeList[j];
       const aVerts = [`${a.ax},${a.ay}`, `${a.bx},${a.by}`];
-      const bVerts = [`${b.ax},${b.by}`, `${b.bx},${b.by}`];
+      const bVerts = [`${b.ax},${b.ay}`, `${b.bx},${b.by}`];
       const shared = aVerts.filter(v => bVerts.includes(v));
       if (shared.length === 1) {
         epEdgeAdjacency.get(a.key).push(b.key);
