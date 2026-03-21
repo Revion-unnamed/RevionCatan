@@ -280,6 +280,17 @@ function epRenderShip(ship) {
     cursor:          'pointer',
   });
 
+// Large invisible hit area — ensures the group is tappable on mobile
+  const hitRect = svgEl('rect', {
+    x:                '-20',
+    y:                '-20',
+    width:            '40',
+    height:           '40',
+    fill:             'transparent',
+    'pointer-events': 'all',
+  });
+
+  g.appendChild(hitRect);
   g.appendChild(body);
   g.appendChild(mast);
   g.appendChild(sail);
