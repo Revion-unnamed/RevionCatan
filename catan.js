@@ -2502,10 +2502,8 @@ buildScoreboard();
     if (gamePhase !== 'play') { showMessage('⚠️ Cannot play dev cards during setup'); return; }
     renderDevHand();
   });
+
  
-document.getElementById('reset-btn').addEventListener('click', () => {
-    location.reload();
-  });
  document.getElementById('fish-market-btn').addEventListener('click', () => {
   if (gamePhase !== 'play') return;
   const panel = document.getElementById('fish-market-panel');
@@ -2592,5 +2590,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initStartScreen();
 document.getElementById('reset-btn').addEventListener('click', () => {
     location.reload();
+  });
+  document.getElementById('cheat-btn').addEventListener('click', () => {
+    ['Lumber', 'Brick', 'Wool', 'Grain', 'Ore'].forEach(r =>
+      addResourceForPlayer(activePlayer(), r, 5)
+    );
+    showMessage('🎁 +5 of each resource');
   });
 });
