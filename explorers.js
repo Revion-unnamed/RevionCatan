@@ -88,7 +88,7 @@ const EP_SOUTH_TERRAINS = ['forest', 'hills', 'mountains', 'pasture', 'fields', 
 // Number token pools — 6 tokens each, shuffled separately
 const EP_NORTH_TOKENS = [3, 4, 5, 6, 9, 10];
 const EP_SOUTH_TOKENS = [4, 5, 6, 8, 10, 11];
-
+const EP_HARBOR_COST = { Grain: 2, Ore: 2 };
 
 /* ================================================================
    EP SECTION 3 · SHIP DATA MODEL (state — safe at top level)
@@ -521,6 +521,58 @@ function epBuildSettler(vertexKey) {
   showMessage('👤 Settler built');
 }
 
+/**
+ * epBuildHarbor — upgrades a settlement to a harbor settlement.
+ * Costs 2 Grain + 2 Ore. Awards +1 VP. Enables ship building.
+ */
+function epBuildHarbor(vertexKey) {
+  if (!activePlayer().villages.has(vertexKey)) {
+    showMessage('⚠️ Must build harbor on own settlement');
+    return;
+  }
+  if (activePlayer().harbors.has(vertexKey)) {
+    showMessage('⚠️ Already a harbor here');
+    return;
+  }
+  if (!canAfford(EP_HARBOR_COST)) {
+    showMessage('⚠️ Need 🌾🌾 ⛰️⛰️ to build a harbor');
+    return;
+  }
+
+  spendResources(EP_HARBOR_COST);
+  activePlayer().harbors.add(vertexKey);
+  updateVP(activePlayer(), 1);
+  epRenderHarbor(vertexKey);
+  showMessage('⚓ Harbor built! +1 VP');
+}
+
+/**
+ * epRenderHarbor — replaces the 🏠 icon with 🏠🌊 on a vertex.
+ */
+function epRenderHarbor(vertexKey) {
+  const svg = document.getElementById('board-svg');
+
+  // Replace existing village icon
+  const existing = [...svg.querySelectorAll('.village-icon')].find(el => {
+    const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
+    if (!circle) return false;
+    return el.getAttribute('x') === circle.getAttribute('cx') &&
+           parseFloat(el.getAttribute('y')) === parseFloat(circle.getAttribute('cy')) + 1;
+  });
+  if (existing) existing.textContent = '🏠🌊';
+
+  // Tag the vertex circle so ship placement can find harbors
+  const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
+  if (circle) circle.setAttribute('data-harbor', 'true');
+}
+
+/**
+ * epIsHarborVertex — returns true if a vertex key is a harbor settlement
+ * belonging to the active player.
+ */
+function epIsHarborVertex(vertexKey) {
+  return activePlayer().harbors.has(vertexKey);
+}
 function epRenderSettlerOnVertex(vertexKey) {
   const svg    = document.getElementById('board-svg');
   const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
@@ -692,8 +744,11 @@ function epHandleVertexClick(v) {
                      canAfford(VILLAGE_COST) &&
                      activePlayer().settlers < 2 &&
                      !activePlayer().settlerVertices?.has(v.key);
+const canHarbor  = hasVillage &&
+                     !activePlayer().harbors.has(v.key) &&
+                     canAfford(EP_HARBOR_COST);
 
-  if (!canSettle && !canSettler) return;
+  if (!canSettle && !canSettler && !canHarbor) return;
 
   document.getElementById('place-prompt')?.remove();
 
@@ -705,6 +760,7 @@ function epHandleVertexClick(v) {
   let html = '';
   if (canSettle)  html += `<button id="confirm-village">🏠 Settlement</button>`;
   if (canSettler) html += `<button id="confirm-settler">👤 Build Settler</button>`;
+  if (canHarbor)  html += `<button id="confirm-harbor">⚓ Build Harbor</button>`;
   html += `<button id="cancel-prompt">✕</button>`;
 
   const prompt = document.createElement('div');
@@ -729,6 +785,10 @@ function epHandleVertexClick(v) {
     prompt.remove();
   });
 
+document.getElementById('confirm-harbor')?.addEventListener('click', () => {
+    epBuildHarbor(v.key);
+    prompt.remove();
+  });
   document.getElementById('cancel-prompt')?.addEventListener('click', () => {
     prompt.remove();
   });
