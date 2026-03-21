@@ -735,6 +735,7 @@ function epInit() {
   window.runRollDice = function() {
     document.getElementById('roll-dice-btn').style.display = 'none';
     epHasRolled = true;
+    hasRolledThisTurn = true;
 
     const d1   = Math.ceil(Math.random() * 6);
     const d2   = Math.ceil(Math.random() * 6);
