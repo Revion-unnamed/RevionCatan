@@ -58,36 +58,36 @@ const EP_START_TOKENS = [11, 5, 3, 9, 10, 8, 4, 6, 6, 3, 11, 9, 4, 5, 10];
 
 // --- Northern unexplored area (6 tiles, face-down, upper right) ---
 const EP_NORTH_COORDS = [
-  { q:  4, r: -3 }, { q:  5, r: -3 },
-  { q:  4, r: -2 }, { q:  5, r: -2 },
-  { q:  3, r: -1 }, { q:  4, r: -1 },
+  { q:  4, r: -3 }, { q:  5, r: -3 }, { q:  6, r: -3 },
+  { q:  4, r: -2 }, { q:  5, r: -2 }, { q:  6, r: -2 },
+  { q:  3, r: -1 }, { q:  4, r: -1 }, { q:  6, r: -1 },
 ];
 
 // --- Southern unexplored area (6 tiles, face-down, lower right) ---
 const EP_SOUTH_COORDS = [
-  { q:  3, r:  1 }, { q:  4, r:  1 },
-  { q:  2, r:  2 }, { q:  3, r:  2 },
-  { q:  1, r:  3 }, { q:  2, r:  3 },
+  { q:  2, r:  1 }, { q:  3, r:  1 }, { q:  5, r:  1 },
+  { q:  2, r:  2 }, { q:  3, r:  2 }, { q:  4, r:  2 },
+  { q:  1, r:  3 }, { q:  2, r:  3 }, { q:  3, r:  3 },
 ];
 
 // --- Sea hexes (23 tiles, always face-up) ---
 const EP_SEA_COORDS = [
-  { q:  3, r: -3 }, { q:  6, r: -3 },
-  { q:  2, r: -2 }, { q:  3, r: -2 }, { q:  6, r: -2 },
-  { q:  1, r: -1 }, { q:  2, r: -1 }, { q:  5, r: -1 }, { q:  6, r: -1 },
+  { q:  3, r: -3 }, 
+  { q:  2, r: -2 }, { q:  3, r: -2 }, 
+  { q:  1, r: -1 }, { q:  2, r: -1 }, { q:  5, r: -1 },
   { q:  1, r:  0 }, { q:  2, r:  0 }, { q:  3, r:  0 }, { q:  4, r:  0 }, { q:  5, r:  0 },
-  { q:  0, r:  1 }, { q:  1, r:  1 }, { q:  2, r:  1 }, { q:  5, r:  1 },
-  { q:  0, r:  2 }, { q:  1, r:  2 }, { q:  4, r:  2 },
-  { q:  0, r:  3 }, { q:  3, r:  3 },
+  { q:  0, r:  1 }, { q:  1, r:  1 }, { q:  4, r:  1 },
+  { q:  0, r:  2 }, { q:  1, r:  2 },
+  { q:  0, r:  3 },
 ];
 
 // Terrain pools for unexplored areas — shuffled at game start
-const EP_NORTH_TERRAINS = ['forest', 'pasture', 'fields', 'hills', 'mountains', 'fields'];
-const EP_SOUTH_TERRAINS = ['forest', 'hills', 'mountains', 'pasture', 'fields', 'mountains'];
+const EP_NORTH_TERRAINS = ['forest', 'pasture', 'fields', 'hills', 'mountains', 'fields', 'gold'];
+const EP_SOUTH_TERRAINS = ['forest', 'hills', 'mountains', 'pasture', 'fields', 'mountains', 'gold'];
 
 // Number token pools — 6 tokens each, shuffled separately
-const EP_NORTH_TOKENS = [3, 4, 5, 6, 9, 10];
-const EP_SOUTH_TOKENS = [4, 5, 6, 8, 10, 11];
+const EP_NORTH_TOKENS = [3, 4, 5, 6, 8, 9, 10];
+const EP_SOUTH_TOKENS = [4, 5, 6, 8, 9, 10, 11];
 const EP_HARBOR_COST = { Grain: 2, Ore: 2 };
 
 /* ================================================================
