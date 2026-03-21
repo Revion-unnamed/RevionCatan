@@ -1379,7 +1379,7 @@ function placeVillage(v) {
     return;
   }
   // Only charge during play phase
-  if (gamePhase === 'play' && !canAfford(VILLAGE_COST)) {
+  if (gamePhase === 'play' && !freePlacement && !canAfford(VILLAGE_COST)) {
     showMessage('⚠️ Not enough resources — needs 🌲 🐑 🧱 🌾');
     return;
   }
