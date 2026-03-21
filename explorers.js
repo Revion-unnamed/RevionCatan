@@ -982,9 +982,9 @@ function epInit() {
   window.buildPlayerExtensions = function() {
     return {
       ships:    new Set(),
-      settlers: 2,
+      settlers: 0,
       harbors:  new Set(),
-      gold:     2,
+      gold:     0,
     };
   };
 
