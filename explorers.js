@@ -168,8 +168,33 @@ function epGetReachableEdges(ship) {
       const occupancy = epShips.filter(s => s.edgeKey === neighbourKey).length;
       if (occupancy < 2) reachable.add(neighbourKey);
 
-      // Can still pass through a full edge (just can't stop there)
-      queue.push({ key: neighbourKey, movesLeft: movesLeft - 1 });
+// Check if this edge touches an undiscovered tile
+      // If so it's reachable but movement ends there — don't expand further
+      const line = document.querySelector(`line[data-key="${neighbourKey}"]`);
+      let touchesUndiscovered = false;
+      if (line) {
+        const ax = parseFloat(line.getAttribute('x1'));
+        const ay = parseFloat(line.getAttribute('y1'));
+        const bx = parseFloat(line.getAttribute('x2'));
+        const by = parseFloat(line.getAttribute('y2'));
+        const endpointKeys = [
+          `${roundCoord(ax)},${roundCoord(ay)}`,
+          `${roundCoord(bx)},${roundCoord(by)}`,
+        ];
+        touchesUndiscovered = landTileCache.some(t => {
+          if (t.discovered) return false;
+          const { x, y } = hexToPixel(t.q, t.r);
+          const corners  = hexCorners(x, y, HEX_SIZE);
+          return corners.some(c =>
+            endpointKeys.includes(`${roundCoord(c.x)},${roundCoord(c.y)}`)
+          );
+        });
+      }
+
+      // Only expand BFS further if this edge doesn't touch undiscovered tile
+      if (!touchesUndiscovered) {
+        queue.push({ key: neighbourKey, movesLeft: movesLeft - 1 });
+      }
     }
   }
 
@@ -549,19 +574,23 @@ function epPlaceShip(edgeKey, free = false) {
  * epRevealTile — flips a face-down tile face-up and re-renders it.
  * TODO: implement in Phase 5.
  */
- function epRevealTile(tile) {
+
+function epRevealTile(tile) {
   tile.discovered = true;
 
-  // Simply remove the face-down overlay — the tile was already rendered underneath
+  // Remove face-down overlay
   document.querySelector(`[data-facedown="${tile.q},${tile.r}"]`)?.remove();
   document.querySelector(`[data-facedown-lbl="${tile.q},${tile.r}"]`)?.remove();
 
-  // Award 1 gold to the discovering player
-  activePlayer().gold = (activePlayer().gold || 0) + 1;
-  showMessage(`🗺️ New land discovered! +1 gold`, 3000);
+  // Award 1 of the tile's resource if it produces one
+  const info = TERRAIN[tile.terrain];
+  if (info && info.resource) {
+    addResourceForPlayer(activePlayer(), info.resource, 1);
+    showMessage(`🗺️ Discovered ${info.label}! +1 ${info.icon}`, 3000);
+  } else {
+    showMessage(`🗺️ New Ocean discovered!`, 3000);
+  }
 }
-
-
 
 /* ================================================================
    EP SECTION 5 · BOARD INITIALISATION (called from epInit)
