@@ -38,7 +38,7 @@ function activateExplorersMode() {
 // --- Starting island (15 land tiles, leftmost 2-2-2-3-2-2-2 of each row) ---
 const EP_START_COORDS = [
   { q:  1, r: -3 }, { q:  2, r: -3 },
-  { q: 0, r: -2 }, { q:  1, r: -2 },
+  { q:  0, r: -2 }, { q:  1, r: -2 },
   { q: -1, r: -1 }, { q:  0, r: -1 },
   { q: -2, r:  0 }, { q: -1, r:  0 }, { q:  0, r:  0 },
   { q: -2, r:  1 }, { q: -1, r:  1 },
@@ -53,7 +53,7 @@ const EP_START_TERRAINS_POOL = [
   'hills', 'mountains', 'mountains', 'pasture', 'forest',
 ];
 
-// Number tokens — fixed positions per rulebook Example 2
+// Number tokens — shuffled with no-adjacent-reds rule
 const EP_START_TOKENS = [11, 5, 3, 9, 10, 8, 4, 6, 6, 3, 11, 9, 4, 5, 10];
 
 // --- Northern unexplored area (6 tiles, face-down, upper right) ---
@@ -89,6 +89,7 @@ const EP_SOUTH_TERRAINS = ['forest', 'hills', 'mountains', 'pasture', 'fields', 
 const EP_NORTH_TOKENS = [3, 4, 5, 6, 9, 10];
 const EP_SOUTH_TOKENS = [4, 5, 6, 8, 10, 11];
 
+
 /* ================================================================
    EP SECTION 3 · SHIP DATA MODEL (state — safe at top level)
    Empty until E&P mode runs. Never affects Classic.
@@ -103,11 +104,8 @@ let epSeaEdges      = new Set(); // all sea edge keys — populated by epBuildEd
 
 /**
  * epBuildEdgeAdjacency — computes sea edge adjacency.
- * Builds full tile list, calls buildGraph with isSea tagging,
- * then constructs BFS graph of sea edges.
  */
 function epBuildEdgeAdjacency() {
-  // Build full tile list so buildGraph can tag isSea correctly
   const allTiles = [
     ...EP_START_COORDS.map(c  => ({ ...c, isOcean: false })),
     ...EP_SEA_COORDS.map(c    => ({ ...c, isOcean: true  })),
@@ -117,14 +115,11 @@ function epBuildEdgeAdjacency() {
 
   const { edges } = buildGraph(window.buildGraphCoords, allTiles);
 
-  // Collect all sea edge keys
   epSeaEdges = new Set();
   edges.forEach((edge, key) => {
     if (edge.isSea) epSeaEdges.add(key);
   });
 
-  // Build adjacency map: sea edge → list of neighbouring sea edges
-  // Two sea edges are adjacent if they share exactly one endpoint vertex
   epEdgeAdjacency = new Map();
   epSeaEdges.forEach(key => epEdgeAdjacency.set(key, []));
 
@@ -147,8 +142,7 @@ function epBuildEdgeAdjacency() {
 
 /**
  * epGetReachableEdges — BFS from a ship's current edge.
- * Returns Set of edge keys reachable within ship.movesLeft steps.
- * Excludes edges already holding 2 ships.
+ * Stops expanding past edges that touch undiscovered tiles.
  */
 function epGetReachableEdges(ship) {
   const reachable = new Set();
@@ -164,12 +158,10 @@ function epGetReachableEdges(ship) {
       if (visited.has(neighbourKey)) continue;
       visited.add(neighbourKey);
 
-      // Check occupancy — cannot END on an edge with 2 ships
       const occupancy = epShips.filter(s => s.edgeKey === neighbourKey).length;
       if (occupancy < 2) reachable.add(neighbourKey);
 
-// Check if this edge touches an undiscovered tile
-      // If so it's reachable but movement ends there — don't expand further
+      // Check if this edge touches an undiscovered tile — stop BFS here
       const line = document.querySelector(`line[data-key="${neighbourKey}"]`);
       let touchesUndiscovered = false;
       if (line) {
@@ -191,7 +183,6 @@ function epGetReachableEdges(ship) {
         });
       }
 
-      // Only expand BFS further if this edge doesn't touch undiscovered tile
       if (!touchesUndiscovered) {
         queue.push({ key: neighbourKey, movesLeft: movesLeft - 1 });
       }
@@ -202,9 +193,7 @@ function epGetReachableEdges(ship) {
 }
 
 /**
- * epGetDistance — returns the minimum number of steps between
- * two edge keys using BFS through epEdgeAdjacency.
- * Returns Infinity if no path exists.
+ * epGetDistance — BFS shortest path between two edge keys.
  */
 function epGetDistance(fromKey, toKey) {
   if (fromKey === toKey) return 0;
@@ -223,27 +212,22 @@ function epGetDistance(fromKey, toKey) {
   }
   return Infinity;
 }
+
 /**
- * epMoveShip — moves a ship to a new edge.
- * TODO: implement in Phase 4.
+ * epMoveShip — moves a ship to a new edge, deducting movement points.
  */
- function epMoveShip(ship, targetEdgeKey) {
+function epMoveShip(ship, targetEdgeKey) {
   epClearHighlights();
 
-// Calculate actual distance and deduct correct movement points
   const dist = epGetDistance(ship.edgeKey, targetEdgeKey);
   activePlayer().ships.delete(ship.edgeKey);
   ship.edgeKey   = targetEdgeKey;
   ship.movesLeft = Math.max(0, ship.movesLeft - dist);
   activePlayer().ships.add(targetEdgeKey);
 
-  // Update SVG
   epUpdateShipSVG(ship);
-
-  // Check for tile discovery at the new edge endpoints
   epCheckDiscovery(targetEdgeKey, ship);
 
-  // If moves remain, re-highlight from new position
   if (ship.movesLeft > 0) {
     epSelectedShip = ship;
     const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
@@ -263,16 +247,12 @@ function epGetDistance(fromKey, toKey) {
 
 /**
  * epRenderShip — draws a ship SVG element on an edge.
- * The ship is a small elongated shape centred on the edge midpoint,
- * rotated to align with the edge direction.
- * Tagged with data-ship-id for later position updates.
  */
 function epRenderShip(ship) {
   const svg   = document.getElementById('board-svg');
   const layer = document.getElementById('ships-layer');
   if (!layer) return;
 
-  // Find the edge geometry from the rendered lines
   const line = svg.querySelector(`line[data-key="${ship.edgeKey}"]`);
   if (!line) return;
 
@@ -288,105 +268,76 @@ function epRenderShip(ship) {
   const player = players.find(p => p.id === ship.playerId);
   const color  = player ? player.color : '#ffffff';
 
-  // Ship body — elongated rectangle
   const body = svgEl('rect', {
-    x:              (-14).toFixed(2),
-    y:              (-5).toFixed(2),
-    width:          '28',
-    height:         '8',
-    rx:             '4',
-    fill:           color,
-    stroke:         '#2c1a0e',
-    'stroke-width': '1.5',
+    x: (-14).toFixed(2), y: (-5).toFixed(2),
+    width: '28', height: '8', rx: '4',
+    fill: color, stroke: '#2c1a0e', 'stroke-width': '1.5',
     'pointer-events': 'none',
   });
 
-  // Mast — small vertical line
   const mast = svgEl('line', {
-    x1:             '0',
-    y1:             '-5',
-    x2:             '0',
-    y2:             '-13',
-    stroke:         '#2c1a0e',
-    'stroke-width': '1.5',
+    x1: '0', y1: '-5', x2: '0', y2: '-13',
+    stroke: '#2c1a0e', 'stroke-width': '1.5',
     'pointer-events': 'none',
   });
 
-  // Sail — small triangle
   const sail = svgEl('polygon', {
-    points:         '0,-13 8,-7 0,-5',
-    fill:           '#f5ead0',
-    opacity:        '0.85',
+    points: '0,-13 8,-7 0,-5',
+    fill: '#f5ead0', opacity: '0.85',
     'pointer-events': 'none',
   });
 
-  // Group — positioned at edge midpoint and rotated
   const g = svgEl('g', {
-    'data-ship-id':  ship.id,
-    transform:       `translate(${mx.toFixed(2)},${my.toFixed(2)}) rotate(${angle.toFixed(1)})`,
+    'data-ship-id':   ship.id,
+    transform:        `translate(${mx.toFixed(2)},${my.toFixed(2)}) rotate(${angle.toFixed(1)})`,
     'pointer-events': 'all',
-    cursor:          'pointer',
+    cursor:           'pointer',
   });
 
-// Large invisible hit area — ensures the group is tappable on mobile
+  // Large invisible hit area for mobile tapping
   const hitRect = svgEl('rect', {
-    x:                '-20',
-    y:                '-20',
-    width:            '40',
-    height:           '40',
-    fill:             'transparent',
-    'pointer-events': 'all',
+    x: '-20', y: '-20', width: '40', height: '40',
+    fill: 'transparent', 'pointer-events': 'all',
   });
 
-g.appendChild(hitRect);
+  g.appendChild(hitRect);
   g.appendChild(body);
   g.appendChild(mast);
   g.appendChild(sail);
 
-  // Render hold contents if ship is carrying something
+  // Render hold contents
   if (ship.hold === 'settler') {
     const holdLabel = svgEl('text', {
-      x:                  '0',
-      y:                  '3',
-      'text-anchor':      'middle',
-      'dominant-baseline':'central',
-      'font-size':        '7',
-      'pointer-events':   'none',
-      'data-settler-hold':'true',
+      x: '0', y: '3',
+      'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': '7', 'pointer-events': 'none',
+      'data-settler-hold': 'true',
     });
     holdLabel.textContent = '👤';
     g.appendChild(holdLabel);
   }
 
   layer.appendChild(g);
-  
 
-  // Click handler — Phase 4 will use this for movement
   g.addEventListener('click', (e) => {
     e.stopPropagation();
     epOnShipClick(ship);
   });
 }
 
-/**
- * epRemoveShipSVG — removes a ship's SVG element from the board.
- */
 function epRemoveShipSVG(ship) {
   document.querySelector(`[data-ship-id="${ship.id}"]`)?.remove();
 }
 
-/**
- * epUpdateShipSVG — moves a ship's SVG element to a new edge.
- */
 function epUpdateShipSVG(ship) {
   epRemoveShipSVG(ship);
   epRenderShip(ship);
 }
 
 /**
- * epOnShipClick — stub for Phase 4 movement.
+ * epOnShipClick — handles ship taps in and out of movement phase.
  */
- function epOnShipClick(ship) {
+function epOnShipClick(ship) {
   // Outside movement phase — handle load/unload
   if (!epInMovement) {
     if (gamePhase !== 'play' || !hasRolledThisTurn) return;
@@ -394,24 +345,19 @@ function epUpdateShipSVG(ship) {
     epShowShipActionMenu(ship);
     return;
   }
- 
+
   // Only the selected ship can be clicked to deselect
   if (epSelectedShip) {
     if (epSelectedShip.id === ship.id) {
-      // Deselect
       epClearHighlights();
       epSelectedShip = null;
     }
-    // All other ship clicks ignored while one is selected
     return;
   }
 
-  // No ship selected yet — only active player's ships are selectable
   if (ship.playerId !== activePlayer().id) return;
 
   epSelectedShip = ship;
-
-  // Highlight the selected ship visually
   const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
   if (shipEl) shipEl.classList.add('ship-selected');
 
@@ -422,7 +368,6 @@ function epUpdateShipSVG(ship) {
     return;
   }
 
-  // Highlight reachable edges
   const reachable = epGetReachableEdges(ship);
   epHighlightEdges(reachable, activePlayer().color);
 }
@@ -432,11 +377,10 @@ function epHighlightEdges(edgeKeys, color) {
     const line = document.querySelector(`line[data-key="${key}"]`);
     if (!line) return;
     line.classList.add('ep-reachable');
-    line.style.stroke       = color;
-    line.style.strokeWidth  = '4';
-    line.style.opacity      = '0.7';
+    line.style.stroke      = color;
+    line.style.strokeWidth = '4';
+    line.style.opacity     = '0.7';
 
-    // Wire move handler — once only
     line._epMoveHandler = () => {
       if (!epSelectedShip) return;
       epMoveShip(epSelectedShip, key);
@@ -448,7 +392,6 @@ function epHighlightEdges(edgeKeys, color) {
 function epClearHighlights() {
   document.querySelectorAll('.ep-reachable').forEach(line => {
     line.classList.remove('ep-reachable');
-    // Don't clear style on road lines — they have player colour applied inline
     if (line.classList.contains('road')) return;
     line.style.stroke      = '';
     line.style.strokeWidth = '';
@@ -462,36 +405,25 @@ function epClearHighlights() {
       hitArea.removeEventListener('click', hitArea._epMoveHandler);
       delete hitArea._epMoveHandler;
     }
-    
   });
-  // Deselect ship visual
   document.querySelectorAll('.ship-selected').forEach(el => {
     el.classList.remove('ship-selected');
   });
 }
 
-
-/**
- * epRenderAllShips — renders all ships currently in epShips array.
- * Called after board re-renders or on game load.
- */
 function epRenderAllShips() {
   epShips.forEach(s => epRenderShip(s));
 }
 
 /**
- * epRenderFaceDownTiles — draws a grey hex overlay over every
- * undiscovered tile. Each overlay is tagged with data-facedown-key
- * so epRevealTile() can find and remove it by coord.
+ * epRenderFaceDownTiles — draws grey overlays over undiscovered tiles.
  */
 function epRenderFaceDownTiles() {
   const svg = document.getElementById('board-svg');
 
-  // Insert a dedicated layer just above the tile layer, below edges
   let layer = document.getElementById('facedown-layer');
   if (!layer) {
     layer = svgEl('g', { id: 'facedown-layer' });
-    // Insert before edges-layer so it sits under edges and ships
     const edgesLayer = document.getElementById('edges-layer');
     svg.insertBefore(layer, edgesLayer);
   }
@@ -501,37 +433,26 @@ function epRenderFaceDownTiles() {
     const corners  = hexCorners(x, y, HEX_SIZE);
     const pts      = cornersToPoints(corners);
 
-    // Dark grey polygon covers the tile completely
     const overlay = svgEl('polygon', {
-      points:           pts,
-      fill:             '#2a2a3a',
-      stroke:           '#3a3a5a',
-      'stroke-width':   2,
-      'pointer-events': 'none',
-      'data-facedown':  `${tile.q},${tile.r}`,
+      points: pts, fill: '#2a2a3a', stroke: '#3a3a5a',
+      'stroke-width': 2, 'pointer-events': 'none',
+      'data-facedown': `${tile.q},${tile.r}`,
     });
     layer.appendChild(overlay);
 
-    // Question mark to signal unexplored
     const label = svgEl('text', {
-      x:                   x.toFixed(2),
-      y:                   y.toFixed(2),
-      'text-anchor':       'middle',
-      'dominant-baseline': 'central',
-      'font-size':         '18',
-      fill:                '#5a5a7a',
-      'pointer-events':    'none',
+      x: x.toFixed(2), y: y.toFixed(2),
+      'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': '18', fill: '#5a5a7a', 'pointer-events': 'none',
       'data-facedown-lbl': `${tile.q},${tile.r}`,
     });
     label.textContent = '?';
     layer.appendChild(label);
   });
 }
+
 /**
  * epPlaceShip — places a ship on an edge for the active player.
- * Deducts build cost (1 Lumber + 1 Wool) unless free is true.
- * @param {string}  edgeKey
- * @param {boolean} free — true for starting placement, no cost
  */
 function epPlaceShip(edgeKey, free = false) {
   if (!free) {
@@ -543,25 +464,26 @@ function epPlaceShip(edgeKey, free = false) {
   }
 
   const ship = {
-    id:        `ship-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+    id:        `ship-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     edgeKey,
     playerId:  activePlayer().id,
     hold:      null,
-    movesLeft: 0, // 0 on placement — can move next turn
+    movesLeft: 0,
   };
 
   epShips.push(ship);
   activePlayer().ships.add(edgeKey);
   epRenderShip(ship);
-  showMessage(`⛵ Ship placed`);
+  showMessage('⛵ Ship placed');
 }
+
+
 /* ================================================================
    EP SECTION 3C · SETTLERS
    ================================================================ */
 
 /**
- * epBuildSettler — places a settler piece on a settlement vertex.
- * Costs VILLAGE_COST. Shows 👤 on the vertex.
+ * epBuildSettler — builds a settler piece on own settlement vertex.
  */
 function epBuildSettler(vertexKey) {
   if (activePlayer().settlers >= 2) {
@@ -576,8 +498,7 @@ function epBuildSettler(vertexKey) {
     showMessage('⚠️ Need 🌲 🧱 🐑 🌾 to build a settler');
     return;
   }
-  // Check no settler already here
-  if (activePlayer().settlerVertices && activePlayer().settlerVertices.has(vertexKey)) {
+  if (activePlayer().settlerVertices?.has(vertexKey)) {
     showMessage('⚠️ Settler already here');
     return;
   }
@@ -586,17 +507,12 @@ function epBuildSettler(vertexKey) {
   activePlayer().settlers++;
   if (!activePlayer().settlerVertices) activePlayer().settlerVertices = new Set();
   activePlayer().settlerVertices.add(vertexKey);
-
-  // Render 👤 on the vertex
   epRenderSettlerOnVertex(vertexKey);
   showMessage('👤 Settler built');
 }
 
-/**
- * epRenderSettlerOnVertex — draws a 👤 emoji above a vertex.
- */
 function epRenderSettlerOnVertex(vertexKey) {
-  const svg = document.getElementById('board-svg');
+  const svg    = document.getElementById('board-svg');
   const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
   if (!circle) return;
 
@@ -604,59 +520,39 @@ function epRenderSettlerOnVertex(vertexKey) {
   const vy = parseFloat(circle.getAttribute('cy'));
 
   const label = svgEl('text', {
-    x:                   vx.toFixed(2),
-    y:                   (vy - 12).toFixed(2),
-    'text-anchor':       'middle',
-    'dominant-baseline': 'central',
-    'font-size':         '10',
-    'pointer-events':    'none',
-    'data-settler-vtx':  vertexKey,
+    x: vx.toFixed(2), y: (vy - 12).toFixed(2),
+    'text-anchor': 'middle', 'dominant-baseline': 'central',
+    'font-size': '10', 'pointer-events': 'none',
+    'data-settler-vtx': vertexKey,
   });
   label.textContent = '👤';
   svg.appendChild(label);
 }
 
-/**
- * epRemoveSettlerFromVertex — removes the 👤 from a vertex.
- */
 function epRemoveSettlerFromVertex(vertexKey) {
   document.querySelector(`[data-settler-vtx="${vertexKey}"]`)?.remove();
 }
 
-/**
- * epRenderSettlerOnShip — adds a small 👤 to a ship SVG element.
- */
 function epRenderSettlerOnShip(ship) {
   const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
   if (!shipEl) return;
-  const existing = shipEl.querySelector('[data-settler-hold]');
-  if (existing) return;
+  if (shipEl.querySelector('[data-settler-hold]')) return;
 
   const label = svgEl('text', {
-    x:                  '0',
-    y:                  '3',
-    'text-anchor':      'middle',
-    'dominant-baseline':'central',
-    'font-size':        '7',
-    'pointer-events':   'none',
-    'data-settler-hold':'true',
+    x: '0', y: '3',
+    'text-anchor': 'middle', 'dominant-baseline': 'central',
+    'font-size': '7', 'pointer-events': 'none',
+    'data-settler-hold': 'true',
   });
   label.textContent = '👤';
   shipEl.appendChild(label);
 }
 
-/**
- * epRemoveSettlerFromShip — removes the 👤 from a ship SVG element.
- */
 function epRemoveSettlerFromShip(ship) {
-  const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
-  shipEl?.querySelector('[data-settler-hold]')?.remove();
+  document.querySelector(`[data-ship-id="${ship.id}"]`)
+    ?.querySelector('[data-settler-hold]')?.remove();
 }
 
-/**
- * epLoadSettler — loads a settler from an adjacent vertex into a ship's hold.
- * Called when a ship is tapped and player has settlers on adjacent vertices.
- */
 function epLoadSettler(ship, vertexKey) {
   if (ship.hold !== null) {
     showMessage('⚠️ Ship hold is not empty');
@@ -671,10 +567,10 @@ function epLoadSettler(ship, vertexKey) {
 }
 
 /**
- * epUnloadSettler — places a settler from ship hold onto a vertex as a settlement.
- * The vertex must be valid for settlement placement.
+ * epUnloadSettler — places settler from ship hold as a free settlement.
+ * Uses freePlacement flag so placeVillage doesn't charge again.
  */
- function epUnloadSettler(ship, v) {
+function epUnloadSettler(ship, v) {
   if (ship.hold !== 'settler') {
     showMessage('⚠️ No settler in hold');
     return;
@@ -682,31 +578,25 @@ function epLoadSettler(ship, vertexKey) {
   ship.hold = null;
   epRemoveSettlerFromShip(ship);
   epUpdateShipSVG(ship);
-  // Grant resources back so placeVillage doesn't charge again
-  Object.entries(VILLAGE_COST).forEach(([t, a]) => addResourceForPlayer(activePlayer(), t, a));
+  freePlacement = true;
   placeVillage(v);
+  freePlacement = false;
 }
 
-/**
- * epGetAdjacentVertices — returns vertex keys of both endpoints of a ship's edge.
- */
 function epGetAdjacentVertices(ship) {
   const [aKey, bKey] = ship.edgeKey.split('|');
   return [aKey, bKey];
 }
 
-/**
- * epGetShipsAdjacentToVertex — returns ships whose edge touches a vertex key.
- */
 function epGetShipsAdjacentToVertex(vertexKey) {
   return epShips.filter(s => {
     const [aKey, bKey] = s.edgeKey.split('|');
     return aKey === vertexKey || bKey === vertexKey;
   });
 }
+
 /**
- * epShowShipActionMenu — shows load/unload options when ship is tapped
- * outside of movement phase.
+ * epShowShipActionMenu — shows load/unload prompt when ship tapped outside movement.
  */
 function epShowShipActionMenu(ship) {
   document.getElementById('place-prompt')?.remove();
@@ -716,21 +606,14 @@ function epShowShipActionMenu(ship) {
     parseFloat(document.querySelector(`line[data-key="${ship.edgeKey}"]`)?.getAttribute('y1') || 0)
   );
 
-  const adjVerts  = epGetAdjacentVertices(ship);
+  const adjVerts = epGetAdjacentVertices(ship);
+
   const hasSettlerOnAdj = adjVerts.some(vk =>
     activePlayer().settlerVertices?.has(vk)
   );
   const canLoad   = ship.hold === null && hasSettlerOnAdj;
-  const validUnloadVerts = adjVerts.filter(vertexKey => {
-    const circle = document.querySelector(`[data-key="${vertexKey}"]`);
-    if (!circle) return false;
-    return isVertexAvailable({
-      key: vertexKey,
-      x:   parseFloat(circle.getAttribute('cx')),
-      y:   parseFloat(circle.getAttribute('cy')),
-    });
-  });
-  const canUnload = ship.hold === 'settler' && validUnloadVerts.length > 0;
+  // canUnload: ship has settler — valid vertex check happens in epActivateSettlerUnload
+  const canUnload = ship.hold === 'settler';
 
   if (!canLoad && !canUnload) return;
 
@@ -757,14 +640,12 @@ function epShowShipActionMenu(ship) {
 
   document.getElementById('ship-load')?.addEventListener('click', () => {
     prompt.remove();
-    // Load from whichever adjacent vertex has a settler
     const settlerVtx = adjVerts.find(vk => activePlayer().settlerVertices?.has(vk));
     if (settlerVtx) epLoadSettler(ship, settlerVtx);
   });
 
   document.getElementById('ship-unload')?.addEventListener('click', () => {
     prompt.remove();
-    // Highlight valid unload vertices
     epActivateSettlerUnload(ship);
   });
 
@@ -772,8 +653,9 @@ function epShowShipActionMenu(ship) {
     prompt.remove();
   });
 }
+
 /**
- * epHandleVertexClick — routes vertex clicks in E&P.
+ * epHandleVertexClick — routes E&P vertex clicks.
  * Shows settlement or settler build options.
  */
 function epHandleVertexClick(v) {
@@ -785,9 +667,10 @@ function epHandleVertexClick(v) {
   if (hasCity || takenByOther) return;
 
   const canSettle  = !hasVillage && isVertexAvailable(v) && canAfford(VILLAGE_COST);
-  const canSettler = hasVillage && canAfford(VILLAGE_COST) &&
-                     (activePlayer().settlers < 2) &&
-                     !(activePlayer().settlerVertices?.has(v.key));
+  const canSettler = hasVillage &&
+                     canAfford(VILLAGE_COST) &&
+                     activePlayer().settlers < 2 &&
+                     !activePlayer().settlerVertices?.has(v.key);
 
   if (!canSettle && !canSettler) return;
 
@@ -829,11 +712,29 @@ function epHandleVertexClick(v) {
     prompt.remove();
   });
 }
+
 /**
- * epActivateSettlerUnload — highlights valid vertices adjacent to ship for unloading.
+ * epActivateSettlerUnload — highlights valid adjacent vertices for settler placement.
+ * Shows message and returns early if no valid vertex exists.
  */
 function epActivateSettlerUnload(ship) {
   const adjVerts = epGetAdjacentVertices(ship);
+
+  // Check if any valid vertex exists first
+  const hasValid = adjVerts.some(vertexKey => {
+    const circle = document.querySelector(`[data-key="${vertexKey}"]`);
+    if (!circle) return false;
+    return isVertexAvailable({
+      key: vertexKey,
+      x:   parseFloat(circle.getAttribute('cx')),
+      y:   parseFloat(circle.getAttribute('cy')),
+    });
+  });
+
+  if (!hasValid) {
+    showMessage('⚠️ No valid vertex to place settlement here');
+    return;
+  }
 
   showMessage('🏠 Tap a vertex to place settlement');
 
@@ -850,7 +751,7 @@ function epActivateSettlerUnload(ship) {
     if (!isVertexAvailable(v)) return;
 
     circle.classList.add('ep-settler-target');
-    circle.style.fill   = activePlayer().color;
+    circle.style.fill    = activePlayer().color;
     circle.style.opacity = '0.6';
 
     const handler = (e) => {
@@ -870,21 +771,22 @@ function epActivateSettlerUnload(ship) {
       epUnloadSettler(ship, v);
     };
 
-circle._epSettlerHandler = handler;
+    circle._epSettlerHandler = handler;
     circle.addEventListener('click', handler);
     circle.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
   });
 }
+
+
 /* ================================================================
-   EP SECTION 4 · DISCOVERY (stubs — safe at top level)
+   EP SECTION 4 · DISCOVERY
    ================================================================ */
 
 /**
- * epCheckDiscovery — checks if a ship reveals any tiles.
- * TODO: implement in Phase 5.
+ * epCheckDiscovery — checks if moving to an edge reveals any tiles.
+ * Sets ship.movesLeft = 0 on discovery.
  */
- function epCheckDiscovery(edgeKey, ship = null) {
-  // Get both endpoint vertex keys of this edge
+function epCheckDiscovery(edgeKey, ship = null) {
   const line = document.querySelector(`line[data-key="${edgeKey}"]`);
   if (!line) return;
 
@@ -898,7 +800,6 @@ circle._epSettlerHandler = handler;
     `${roundCoord(bx)},${roundCoord(by)}`,
   ];
 
-  // Check every undiscovered land tile
   landTileCache.filter(t => !t.discovered).forEach(tile => {
     const { x, y } = hexToPixel(tile.q, tile.r);
     const corners  = hexCorners(x, y, HEX_SIZE);
@@ -906,99 +807,91 @@ circle._epSettlerHandler = handler;
     const touches = corners.some(c =>
       endpointKeys.includes(`${roundCoord(c.x)},${roundCoord(c.y)}`)
     );
-if (touches) {
+
+    if (touches) {
       epRevealTile(tile);
       if (ship) ship.movesLeft = 0;
     }
   });
 }
 
-
 /**
- * epRevealTile — flips a face-down tile face-up and re-renders it.
- * TODO: implement in Phase 5.
+ * epRevealTile — removes face-down overlay and awards discovery resource.
  */
-
 function epRevealTile(tile) {
   tile.discovered = true;
 
-  // Remove face-down overlay
   document.querySelector(`[data-facedown="${tile.q},${tile.r}"]`)?.remove();
   document.querySelector(`[data-facedown-lbl="${tile.q},${tile.r}"]`)?.remove();
 
-  // Award 1 of the tile's resource if it produces one
   const info = TERRAIN[tile.terrain];
   if (info && info.resource) {
     addResourceForPlayer(activePlayer(), info.resource, 1);
     showMessage(`🗺️ Discovered ${info.label}! +1 ${info.icon}`, 3000);
   } else {
-    showMessage(`🗺️ New Ocean discovered!`, 3000);
+    showMessage('🗺️ New land discovered!', 3000);
   }
 }
 
+
 /* ================================================================
-   EP SECTION 5 · BOARD INITIALISATION (called from epInit)
-   Runs after catan.js initBoard() has built the SVG.
+   EP SECTION 5 · BOARD INITIALISATION
    ================================================================ */
 
 function epInitBoard() {
   epBuildEdgeAdjacency();
-// Append ships layer after vertices so it sits on top and receives clicks
+
+  // Append ships layer after vertices so it sits on top and receives clicks
   const svg = document.getElementById('board-svg');
   if (!document.getElementById('ships-layer')) {
     svg.appendChild(svgEl('g', { id: 'ships-layer' }));
   }
-  // Remove any stray text elements sitting above ships-layer (port label remnants)
+
+  // Remove stray text elements above ships-layer (port label remnants)
   [...svg.children].forEach(el => {
     if (el.tagName === 'text') el.remove();
   });
+
   console.log(`[E&P] Sea edges: ${epSeaEdges.size}`);
   console.log(`[E&P] Adjacency entries: ${epEdgeAdjacency.size}`);
 
-  // Remove port markers and lines — E&P has no classic ports
   document.querySelectorAll('.port-marker').forEach(el => el.remove());
-  // Render face-down overlays over undiscovered tiles
   epRenderFaceDownTiles();
-epRenderAllShips();
-  // TODO Phase 6: place starting harbor settlements, settler ships, roads
+  epRenderAllShips();
 }
 
 
 /* ================================================================
-   EP SECTION 6 · TURN STATE (safe at top level — just variables)
+   EP SECTION 6 · TURN STATE
    ================================================================ */
 
-let epHasRolled  = false;
-let epInMovement = false;
-let epSelectedShip = null; // the ship currently selected for movement
-let epSettlerMode  = null; // 'load' | 'unload' | null — current settler action
+var epHasRolled    = false;
+var epInMovement   = false;
+var epSelectedShip = null;
+var epSettlerMode  = null;
+
 
 /* ================================================================
    EP SECTION 7 · ENTRY POINT
-   All catan.js hook overrides live HERE, inside epInit(), so they
-   only exist when E&P mode is actually activated.
-   Classic Catan is completely unaffected.
    ================================================================ */
 
 function epInit() {
   activateExplorersMode();
-  
-  // Reposition axial origin so starting island at q=-5 fits on screen
+
   CX = 50;
   CY = 268;
 
-  // Widen SVG viewport to fit the full three-zone E&P board
   document.getElementById('board-svg')
     .setAttribute('viewBox', '-400 -300 1200 1000');
 
   // ── Override 1: player model ──────────────────────────────────
-  // E&P has no dev cards, no knights. Adds ships, settlers, gold.
   window.buildPlayerExtensions = function() {
     return {
-      ships:    new Set(),
-      settlers: 0,
-      harbors:  new Set(),
-      gold:     0,
+      ships:           new Set(),
+      settlers:        0,
+      settlerVertices: new Set(),
+      harbors:         new Set(),
+      gold:            0,
     };
   };
 
@@ -1006,165 +899,113 @@ function epInit() {
   window.buildBoardOverride = function() {
     const tiles = [];
 
-    // Starting island — terrains shuffled, tokens fixed per Example 2
-    
     const startTerrains = shuffle([...EP_START_TERRAINS_POOL]);
     const startTokens   = shuffleNoAdjacentReds(EP_START_COORDS, startTerrains, [...EP_START_TOKENS]);
     EP_START_COORDS.forEach((coord, i) => {
-      tiles.push({
-        ...coord,
-        terrain:    startTerrains[i],
-        number:     startTokens[i],
-        isOcean:    false,
-        discovered: true,
-      });
+      tiles.push({ ...coord, terrain: startTerrains[i], number: startTokens[i], isOcean: false, discovered: true });
     });
-    
 
-    // Northern unexplored area — shuffled, face-down
     const northTerrains = shuffle([...EP_NORTH_TERRAINS]);
     const northTokens   = shuffleNoAdjacentReds(EP_NORTH_COORDS, northTerrains, [...EP_NORTH_TOKENS]);
-        EP_NORTH_COORDS.forEach((coord, i) => {
-      tiles.push({
-        ...coord,
-        terrain:    northTerrains[i],
-        number:     northTokens[i],
-        isOcean:    false,
-        discovered: false,
-      });
+    EP_NORTH_COORDS.forEach((coord, i) => {
+      tiles.push({ ...coord, terrain: northTerrains[i], number: northTokens[i], isOcean: false, discovered: false });
     });
 
-    // Southern unexplored area — shuffled, face-down
     const southTerrains = shuffle([...EP_SOUTH_TERRAINS]);
     const southTokens   = shuffleNoAdjacentReds(EP_SOUTH_COORDS, southTerrains, [...EP_SOUTH_TOKENS]);
-        EP_SOUTH_COORDS.forEach((coord, i) => {
-      tiles.push({
-        ...coord,
-        terrain:    southTerrains[i],
-        number:     southTokens[i],
-        isOcean:    false,
-        discovered: false,
-      });
+    EP_SOUTH_COORDS.forEach((coord, i) => {
+      tiles.push({ ...coord, terrain: southTerrains[i], number: southTokens[i], isOcean: false, discovered: false });
     });
 
-    // Sea hexes — always face-up
     EP_SEA_COORDS.forEach(coord => {
-      tiles.push({
-        ...coord,
-        terrain:    'ocean',
-        number:     null,
-        isOcean:    true,
-        discovered: true,
-      });
+      tiles.push({ ...coord, terrain: 'ocean', number: null, isOcean: true, discovered: true });
     });
 
     return tiles;
   };
 
   // ── Override 3: trade rates ───────────────────────────────────
-  // E&P has no ports — all bank trades are 3:1
-  window.getPortRateForResource = function(type) {
-    return 3;
-  };
+  window.getPortRateForResource = function(type) { return 3; };
 
   // ── Override 4: victory target ────────────────────────────────
-  // Scenario 1 target is 8 VP. No shoe penalty in E&P.
-  window.getVictoryTarget = function(player) {
-    return GAME_CONFIG.vpToWin;
-  };
+  window.getVictoryTarget = function(player) { return GAME_CONFIG.vpToWin; };
 
   // ── Override 5: roll dice ─────────────────────────────────────
-  // No robber on 7 in Scenario 1.
-  // TODO Phase 7: gold compensation when player earns nothing.
   window.runRollDice = function() {
     document.getElementById('roll-dice-btn').style.display = 'none';
-    epHasRolled = true;
+    epHasRolled       = true;
     hasRolledThisTurn = true;
 
     const d1   = Math.ceil(Math.random() * 6);
     const d2   = Math.ceil(Math.random() * 6);
     const roll = d1 + d2;
 
-    document.getElementById('turn-label').textContent =
-      `Turn ${currentTurn} · Rolled ${roll}`;
+    document.getElementById('turn-label').textContent = `Turn ${currentTurn} · Rolled ${roll}`;
 
     if (roll !== 7) collectResources(roll);
 
     showRollOverlay(d1, d2, roll, () => {
       if (roll === 7) {
-        // E&P: discard rule applies but no robber move after
         const mustDiscard = players.filter(p => totalResources(p) >= 8);
         if (mustDiscard.length > 0) {
           discardQueue = mustDiscard;
-          // Override activateRobberMove temporarily so it does nothing
           const _original = activateRobberMove;
           window.activateRobberMove = function() {
-            window.activateRobberMove = _original; // restore immediately
+            window.activateRobberMove = _original;
             document.getElementById('end-turn-btn').disabled   = false;
             document.getElementById('trade-open-btn').disabled = false;
           };
           processDiscardQueue();
         }
       }
-      // After roll: show Move Ships and End Turn
       document.getElementById('move-ships-btn').style.display = 'inline-block';
-      document.getElementById('end-turn-btn').style.display = 'inline-block';
+      document.getElementById('end-turn-btn').style.display   = 'inline-block';
       updateHudForPlayer(activePlayer());
     });
   };
 
   // ── Override 6: end turn ──────────────────────────────────────
-  // TODO Phase 4: insert movement phase before advancing.
   window.runEndTurn = function() {
-    // Close movement phase cleanly
-    epInMovement = false;
+    epInMovement   = false;
     epClearHighlights();
     epSelectedShip = null;
     epHasRolled    = false;
 
-    // Reset next player's ships — do it after nextPlayer() advances index
     currentTurn++;
-    nextPlayer(); // advances currentPlayerIndex
-    // Now activePlayer() is the NEW player — reset their ships
+    nextPlayer();
+
     epShips
       .filter(s => s.playerId === activePlayer().id)
       .forEach(s => { s.movesLeft = 4; });
 
     updateTurnLabel();
-    document.getElementById('move-ships-btn').style.display  = 'none';
-    document.getElementById('move-ships-btn').textContent    = '⛵ Move';
-    document.getElementById('end-turn-btn').style.display    = 'none';
-    document.getElementById('roll-dice-btn').style.display   = 'inline-block';
-    
+    document.getElementById('move-ships-btn').style.display = 'none';
+    document.getElementById('move-ships-btn').textContent   = '⛵ Move';
+    document.getElementById('end-turn-btn').style.display   = 'none';
+    document.getElementById('roll-dice-btn').style.display  = 'inline-block';
   };
 
-// ── Move Ships button ─────────────────────────────────────────
+  // ── Move Ships button ─────────────────────────────────────────
   document.getElementById('move-ships-btn').addEventListener('click', () => {
     if (epInMovement) {
-      // Close movement phase
-      epInMovement = false;
+      epInMovement   = false;
       epClearHighlights();
       epSelectedShip = null;
       document.getElementById('move-ships-btn').textContent = '⛵ Move';
       showMessage('Movement phase ended');
     } else {
-      // Open movement phase
       epInMovement = true;
       document.getElementById('move-ships-btn').textContent = '✓ Done Moving';
       showMessage('⛵ Tap a ship to move it');
     }
   });
+
   // ── HUD cleanup ───────────────────────────────────────────────
-  // Hide Classic-only buttons that don't exist in E&P
   document.getElementById('dev-buy-btn').style.display    = 'none';
   document.getElementById('dev-hand-btn').style.display   = 'none';
   document.getElementById('dev-deck-count').style.display = 'none';
 
   // ── Graph coord source ────────────────────────────────────────
-  // Tell buildGraph which tiles to derive vertices and edges from.
-  // Includes all E&P tiles — starting island, sea hexes, both
-  // unexplored areas — so settlement spots and road/ship slots
-  // are generated across the full board.
   window.buildGraphCoords = [
     ...EP_START_COORDS,
     ...EP_SEA_COORDS,
