@@ -409,6 +409,9 @@ transition: transform 0.05s ease;
 .terrain-desert    { fill: var(--terrain-desert); }
 .terrain-lake { fill: #3a8fc0; }
 .terrain-ocean     { fill: var(--terrain-ocean); stroke: rgba(255, 255, 255, 0.1); }
+.terrain-gold {
+  fill: #c8a400;
+}
 
 /* Inner highlight ring — a second, slightly smaller polygon
    overlaid on each hex to give a subtle bevel/depth effect */
