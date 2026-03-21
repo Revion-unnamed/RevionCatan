@@ -1237,6 +1237,11 @@ function onVertexClick(v) {
   if (gamePhase === 'play' && !hasRolledThisTurn) return;
   if (gamePhase !== 'play' && setupAction !== 'village') return;
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
+  // In E&P, vertex click also allows building a settler
+  if (GAME_CONFIG.mode === 'explorers' && gamePhase === 'play') {
+    epHandleVertexClick(v);
+    return;
+  }
 
   const available    = isVertexAvailable(v);
   const hasVillage   = activePlayer().villages.has(v.key);
