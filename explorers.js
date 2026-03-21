@@ -717,18 +717,22 @@ function epHandleVertexClick(v) {
  * epActivateSettlerUnload — highlights valid adjacent vertices for settler placement.
  * Shows message and returns early if no valid vertex exists.
  */
-function epActivateSettlerUnload(ship) {
+ function epActivateSettlerUnload(ship) {
   const adjVerts = epGetAdjacentVertices(ship);
 
   // Check if any valid vertex exists first
   const hasValid = adjVerts.some(vertexKey => {
     const circle = document.querySelector(`[data-key="${vertexKey}"]`);
     if (!circle) return false;
-    return isVertexAvailable({
+    const _phase = gamePhase;
+    gamePhase = 'setup2';
+    const ok = isVertexAvailable({
       key: vertexKey,
       x:   parseFloat(circle.getAttribute('cx')),
       y:   parseFloat(circle.getAttribute('cy')),
     });
+    gamePhase = _phase;
+    return ok;
   });
 
   if (!hasValid) {
@@ -748,7 +752,11 @@ function epActivateSettlerUnload(ship) {
       y:   parseFloat(circle.getAttribute('cy')),
     };
 
-    if (!isVertexAvailable(v)) return;
+    const _phase = gamePhase;
+    gamePhase = 'setup2';
+    const available = isVertexAvailable(v);
+    gamePhase = _phase;
+    if (!available) return;
 
     circle.classList.add('ep-settler-target');
     circle.style.fill    = activePlayer().color;
@@ -756,7 +764,6 @@ function epActivateSettlerUnload(ship) {
 
     const handler = (e) => {
       e.stopPropagation();
-      // Clean up all targets
       document.querySelectorAll('.ep-settler-target').forEach(el => {
         el.classList.remove('ep-settler-target');
         el.style.opacity = '';
@@ -776,7 +783,6 @@ function epActivateSettlerUnload(ship) {
     circle.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
   });
 }
-
 
 /* ================================================================
    EP SECTION 4 · DISCOVERY
