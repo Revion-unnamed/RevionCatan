@@ -177,16 +177,39 @@ function epGetReachableEdges(ship) {
 }
 
 /**
+ * epGetDistance — returns the minimum number of steps between
+ * two edge keys using BFS through epEdgeAdjacency.
+ * Returns Infinity if no path exists.
+ */
+function epGetDistance(fromKey, toKey) {
+  if (fromKey === toKey) return 0;
+  const queue   = [{ key: fromKey, dist: 0 }];
+  const visited = new Set([fromKey]);
+
+  while (queue.length > 0) {
+    const { key, dist } = queue.shift();
+    const neighbours = epEdgeAdjacency.get(key) || [];
+    for (const nKey of neighbours) {
+      if (nKey === toKey) return dist + 1;
+      if (visited.has(nKey)) continue;
+      visited.add(nKey);
+      queue.push({ key: nKey, dist: dist + 1 });
+    }
+  }
+  return Infinity;
+}
+/**
  * epMoveShip — moves a ship to a new edge.
  * TODO: implement in Phase 4.
  */
  function epMoveShip(ship, targetEdgeKey) {
   epClearHighlights();
 
-  // Update ship state
+// Calculate actual distance and deduct correct movement points
+  const dist = epGetDistance(ship.edgeKey, targetEdgeKey);
   activePlayer().ships.delete(ship.edgeKey);
-  ship.edgeKey = targetEdgeKey;
-  ship.movesLeft--;
+  ship.edgeKey   = targetEdgeKey;
+  ship.movesLeft = Math.max(0, ship.movesLeft - dist);
   activePlayer().ships.add(targetEdgeKey);
 
   // Update SVG
@@ -527,19 +550,9 @@ function epPlaceShip(edgeKey, free = false) {
  function epRevealTile(tile) {
   tile.discovered = true;
 
-  // Remove the face-down overlay and label for this tile
+  // Simply remove the face-down overlay — the tile was already rendered underneath
   document.querySelector(`[data-facedown="${tile.q},${tile.r}"]`)?.remove();
   document.querySelector(`[data-facedown-lbl="${tile.q},${tile.r}"]`)?.remove();
-
-  // Re-render the tile face-up into the SVG
-  const svg = document.getElementById('board-svg');
-
-  // Remove the old hex-group for this tile and re-render it
-  const oldGroup = svg.querySelector(
-    `.hex-group[data-q="${tile.q}"][data-r="${tile.r}"]`
-  );
-  if (oldGroup) oldGroup.remove();
-  renderTile(svg, tile);
 
   // Award 1 gold to the discovering player
   activePlayer().gold = (activePlayer().gold || 0) + 1;
