@@ -800,22 +800,21 @@ function epHandleVertexClick(v) {
     circle.style.fill    = activePlayer().color;
     circle.style.opacity = '0.6';
 
+    let handled = false;
     const handler = (e) => {
+      if (handled) return;
+      handled = true;
+      if (e) e.preventDefault();
       if (e) e.stopPropagation();
-      document.querySelectorAll('.ep-settler-target').forEach(el => {
-        el.classList.remove('ep-settler-target');
-        el.style.opacity = '';
-        if (!el.classList.contains('settlement') && !el.classList.contains('city')) {
-          el.style.fill = '';
-        }
-        if (el._epSettlerHandler) {
-          el.removeEventListener('click', el._epSettlerHandler);
-          delete el._epSettlerHandler;
-        }
-      });
       epClearSettlerTargets();
       epUnloadSettler(ship, v);
     };
+
+    circle._epSettlerHandler = handler;
+    circle.addEventListener('touchend', handler);
+    circle.addEventListener('click', handler);
+  });
+}
 
     circle._epSettlerHandler = handler;
     circle.addEventListener('click', handler);
