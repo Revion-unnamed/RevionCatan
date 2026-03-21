@@ -1284,9 +1284,9 @@ function onEdgeClick(edge) {
   if (gamePhase !== 'play' && setupAction !== 'road' && setupAction !== 'ship') return;
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
 
-  const canRoad = edge.seaCount !== 2 &&
+const canRoad = edge.seaCount !== 2 &&
                   isEdgeAvailable(edge) &&
-                  canAfford(ROAD_COST);
+                  (gamePhase !== 'play' || canAfford(ROAD_COST));
 
   const canShip = GAME_CONFIG.mode === 'explorers' &&
                   edge.isSea &&
