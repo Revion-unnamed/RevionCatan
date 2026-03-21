@@ -962,6 +962,7 @@ let setupOrder = [];
 let setupIndex = 0;
 
 let currentTurn = 1;
+let hasRolledThisTurn = false;
 
 function buildSetupOrder() {
   const forward  = players.map(p => p.id);
@@ -1032,6 +1033,7 @@ function nextPlayer() {
  * Expansion files can override this to add end-of-turn logic.
  */
 function runEndTurn() {
+  hasRolledThisTurn = false;
   currentTurn++;
   nextPlayer();
   updateTurnLabel();
@@ -1045,6 +1047,7 @@ function runEndTurn() {
  */
 function runRollDice() {
   document.getElementById('roll-dice-btn').style.display = 'none';
+  hasRolledThisTurn = true;
 
   const d1   = Math.ceil(Math.random() * 6);
   const d2   = Math.ceil(Math.random() * 6);
@@ -1231,6 +1234,7 @@ function isEdgeAvailable(edge) {
 }
 
 function onVertexClick(v) {
+  if (gamePhase === 'play' && !hasRolledThisTurn) return;
   if (gamePhase !== 'play' && setupAction !== 'village') return;
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
 
@@ -1280,6 +1284,7 @@ document.body.appendChild(prompt);
 }
 
 function onEdgeClick(edge) {
+  if (gamePhase === 'play' && !hasRolledThisTurn) return;
   if (typeof epInMovement !== 'undefined' && epInMovement) return;
   if (gamePhase !== 'play' && setupAction !== 'road' && setupAction !== 'ship') return;
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
