@@ -370,9 +370,14 @@ function epUpdateShipSVG(ship) {
  * epOnShipClick — stub for Phase 4 movement.
  */
  function epOnShipClick(ship) {
-  // Ship clicks only work during movement phase
-  if (!epInMovement) return;
-
+  // Outside movement phase — handle load/unload
+  if (!epInMovement) {
+    if (gamePhase !== 'play' || !hasRolledThisTurn) return;
+    if (ship.playerId !== activePlayer().id) return;
+    epShowShipActionMenu(ship);
+    return;
+  }
+ 
   // Only the selected ship can be clicked to deselect
   if (epSelectedShip) {
     if (epSelectedShip.id === ship.id) {
@@ -534,6 +539,329 @@ function epPlaceShip(edgeKey, free = false) {
   showMessage(`⛵ Ship placed`);
 }
 /* ================================================================
+   EP SECTION 3C · SETTLERS
+   ================================================================ */
+
+/**
+ * epBuildSettler — places a settler piece on a settlement vertex.
+ * Costs VILLAGE_COST. Shows 👤 on the vertex.
+ */
+function epBuildSettler(vertexKey) {
+  if (activePlayer().settlers >= 2) {
+    showMessage('⚠️ Already have 2 settlers');
+    return;
+  }
+  if (!activePlayer().villages.has(vertexKey) && !activePlayer().cities.has(vertexKey)) {
+    showMessage('⚠️ Must build settler on own settlement');
+    return;
+  }
+  if (!canAfford(VILLAGE_COST)) {
+    showMessage('⚠️ Need 🌲 🧱 🐑 🌾 to build a settler');
+    return;
+  }
+  // Check no settler already here
+  if (activePlayer().settlerVertices && activePlayer().settlerVertices.has(vertexKey)) {
+    showMessage('⚠️ Settler already here');
+    return;
+  }
+
+  spendResources(VILLAGE_COST);
+  activePlayer().settlers++;
+  if (!activePlayer().settlerVertices) activePlayer().settlerVertices = new Set();
+  activePlayer().settlerVertices.add(vertexKey);
+
+  // Render 👤 on the vertex
+  epRenderSettlerOnVertex(vertexKey);
+  showMessage('👤 Settler built');
+}
+
+/**
+ * epRenderSettlerOnVertex — draws a 👤 emoji above a vertex.
+ */
+function epRenderSettlerOnVertex(vertexKey) {
+  const svg = document.getElementById('board-svg');
+  const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
+  if (!circle) return;
+
+  const vx = parseFloat(circle.getAttribute('cx'));
+  const vy = parseFloat(circle.getAttribute('cy'));
+
+  const label = svgEl('text', {
+    x:                   vx.toFixed(2),
+    y:                   (vy - 12).toFixed(2),
+    'text-anchor':       'middle',
+    'dominant-baseline': 'central',
+    'font-size':         '10',
+    'pointer-events':    'none',
+    'data-settler-vtx':  vertexKey,
+  });
+  label.textContent = '👤';
+  svg.appendChild(label);
+}
+
+/**
+ * epRemoveSettlerFromVertex — removes the 👤 from a vertex.
+ */
+function epRemoveSettlerFromVertex(vertexKey) {
+  document.querySelector(`[data-settler-vtx="${vertexKey}"]`)?.remove();
+}
+
+/**
+ * epRenderSettlerOnShip — adds a small 👤 to a ship SVG element.
+ */
+function epRenderSettlerOnShip(ship) {
+  const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
+  if (!shipEl) return;
+  const existing = shipEl.querySelector('[data-settler-hold]');
+  if (existing) return;
+
+  const label = svgEl('text', {
+    x:                  '0',
+    y:                  '3',
+    'text-anchor':      'middle',
+    'dominant-baseline':'central',
+    'font-size':        '7',
+    'pointer-events':   'none',
+    'data-settler-hold':'true',
+  });
+  label.textContent = '👤';
+  shipEl.appendChild(label);
+}
+
+/**
+ * epRemoveSettlerFromShip — removes the 👤 from a ship SVG element.
+ */
+function epRemoveSettlerFromShip(ship) {
+  const shipEl = document.querySelector(`[data-ship-id="${ship.id}"]`);
+  shipEl?.querySelector('[data-settler-hold]')?.remove();
+}
+
+/**
+ * epLoadSettler — loads a settler from an adjacent vertex into a ship's hold.
+ * Called when a ship is tapped and player has settlers on adjacent vertices.
+ */
+function epLoadSettler(ship, vertexKey) {
+  if (ship.hold !== null) {
+    showMessage('⚠️ Ship hold is not empty');
+    return;
+  }
+  ship.hold = 'settler';
+  activePlayer().settlerVertices.delete(vertexKey);
+  activePlayer().settlers--;
+  epRemoveSettlerFromVertex(vertexKey);
+  epRenderSettlerOnShip(ship);
+  showMessage('👤 Settler loaded');
+}
+
+/**
+ * epUnloadSettler — places a settler from ship hold onto a vertex as a settlement.
+ * The vertex must be valid for settlement placement.
+ */
+function epUnloadSettler(ship, vertexKey) {
+  if (ship.hold !== 'settler') {
+    showMessage('⚠️ No settler in hold');
+    return;
+  }
+
+  // Use existing vertex availability check
+  const v = { key: vertexKey, x: 0, y: 0 };
+  const vCircle = document.querySelector(`[data-key="${vertexKey}"]`);
+  if (vCircle) {
+    v.x = parseFloat(vCircle.getAttribute('cx'));
+    v.y = parseFloat(vCircle.getAttribute('cy'));
+  }
+
+  if (!isVertexAvailable(v)) {
+    showMessage('⚠️ Cannot place settlement here');
+    return;
+  }
+
+  // Place settlement — free, no resource cost
+  ship.hold = null;
+  epRemoveSettlerFromShip(ship);
+  placeVillage(v);
+  showMessage('🏠 Settlement placed! +1 VP');
+}
+
+/**
+ * epGetAdjacentVertices — returns vertex keys of both endpoints of a ship's edge.
+ */
+function epGetAdjacentVertices(ship) {
+  const [aKey, bKey] = ship.edgeKey.split('|');
+  return [aKey, bKey];
+}
+
+/**
+ * epGetShipsAdjacentToVertex — returns ships whose edge touches a vertex key.
+ */
+function epGetShipsAdjacentToVertex(vertexKey) {
+  return epShips.filter(s => {
+    const [aKey, bKey] = s.edgeKey.split('|');
+    return aKey === vertexKey || bKey === vertexKey;
+  });
+}
+/**
+ * epShowShipActionMenu — shows load/unload options when ship is tapped
+ * outside of movement phase.
+ */
+function epShowShipActionMenu(ship) {
+  document.getElementById('place-prompt')?.remove();
+
+  const { x: sx, y: sy } = svgToScreen(
+    parseFloat(document.querySelector(`line[data-key="${ship.edgeKey}"]`)?.getAttribute('x1') || 0),
+    parseFloat(document.querySelector(`line[data-key="${ship.edgeKey}"]`)?.getAttribute('y1') || 0)
+  );
+
+  const adjVerts  = epGetAdjacentVertices(ship);
+  const hasSettlerOnAdj = adjVerts.some(vk =>
+    activePlayer().settlerVertices?.has(vk)
+  );
+  const canLoad   = ship.hold === null && hasSettlerOnAdj;
+  const canUnload = ship.hold === 'settler';
+
+  if (!canLoad && !canUnload) return;
+
+  let html = '';
+  if (canLoad)   html += `<button id="ship-load">👤 Load Settler</button>`;
+  if (canUnload) html += `<button id="ship-unload">🏠 Place Settlement</button>`;
+  html += `<button id="cancel-prompt">✕</button>`;
+
+  const prompt = document.createElement('div');
+  prompt.id = 'place-prompt';
+  prompt.innerHTML = html;
+  document.body.appendChild(prompt);
+
+  const pw   = 200;
+  const left = Math.min(sx + 10, window.innerWidth - pw - 8);
+  const top  = Math.max(sy - 36, 60);
+  prompt.style.left        = `${left}px`;
+  prompt.style.top         = `${top}px`;
+  prompt.style.borderColor = activePlayer().color;
+  prompt.querySelectorAll('button').forEach(b => {
+    b.style.borderColor = activePlayer().color;
+    b.style.color       = activePlayer().color;
+  });
+
+  document.getElementById('ship-load')?.addEventListener('click', () => {
+    prompt.remove();
+    // Load from whichever adjacent vertex has a settler
+    const settlerVtx = adjVerts.find(vk => activePlayer().settlerVertices?.has(vk));
+    if (settlerVtx) epLoadSettler(ship, settlerVtx);
+  });
+
+  document.getElementById('ship-unload')?.addEventListener('click', () => {
+    prompt.remove();
+    // Highlight valid unload vertices
+    epActivateSettlerUnload(ship);
+  });
+
+  document.getElementById('cancel-prompt')?.addEventListener('click', () => {
+    prompt.remove();
+  });
+}
+/**
+ * epHandleVertexClick — routes vertex clicks in E&P.
+ * Shows settlement or settler build options.
+ */
+function epHandleVertexClick(v) {
+  const hasVillage   = activePlayer().villages.has(v.key);
+  const hasCity      = players.some(p => p.cities.has(v.key));
+  const takenByOther = players.some(p => p.id !== activePlayer().id &&
+    (p.villages.has(v.key) || p.cities.has(v.key)));
+
+  if (hasCity || takenByOther) return;
+
+  const canSettle  = !hasVillage && isVertexAvailable(v) && canAfford(VILLAGE_COST);
+  const canSettler = hasVillage && canAfford(VILLAGE_COST) &&
+                     (activePlayer().settlers < 2) &&
+                     !(activePlayer().settlerVertices?.has(v.key));
+
+  if (!canSettle && !canSettler) return;
+
+  document.getElementById('place-prompt')?.remove();
+
+  const { x: screenX, y: screenY } = svgToScreen(v.x, v.y);
+  const pw   = 200;
+  const left = Math.min(screenX + 10, window.innerWidth - pw - 8);
+  const top  = Math.max(screenY - 36, 60);
+
+  let html = '';
+  if (canSettle)  html += `<button id="confirm-village">🏠 Settlement</button>`;
+  if (canSettler) html += `<button id="confirm-settler">👤 Build Settler</button>`;
+  html += `<button id="cancel-prompt">✕</button>`;
+
+  const prompt = document.createElement('div');
+  prompt.id = 'place-prompt';
+  prompt.innerHTML = html;
+  document.body.appendChild(prompt);
+  prompt.style.left        = `${left}px`;
+  prompt.style.top         = `${top}px`;
+  prompt.style.borderColor = activePlayer().color;
+  prompt.querySelectorAll('button').forEach(b => {
+    b.style.borderColor = activePlayer().color;
+    b.style.color       = activePlayer().color;
+  });
+
+  document.getElementById('confirm-village')?.addEventListener('click', () => {
+    placeVillage(v);
+    prompt.remove();
+  });
+
+  document.getElementById('confirm-settler')?.addEventListener('click', () => {
+    epBuildSettler(v.key);
+    prompt.remove();
+  });
+
+  document.getElementById('cancel-prompt')?.addEventListener('click', () => {
+    prompt.remove();
+  });
+}
+/**
+ * epActivateSettlerUnload — highlights valid vertices adjacent to ship for unloading.
+ */
+function epActivateSettlerUnload(ship) {
+  const adjVerts = epGetAdjacentVertices(ship);
+
+  showMessage('🏠 Tap a vertex to place settlement');
+
+  adjVerts.forEach(vertexKey => {
+    const circle = document.querySelector(`[data-key="${vertexKey}"]`);
+    if (!circle) return;
+
+    const v = {
+      key: vertexKey,
+      x:   parseFloat(circle.getAttribute('cx')),
+      y:   parseFloat(circle.getAttribute('cy')),
+    };
+
+    if (!isVertexAvailable(v)) return;
+
+    circle.classList.add('ep-settler-target');
+    circle.style.fill   = activePlayer().color;
+    circle.style.opacity = '0.6';
+
+    const handler = (e) => {
+      e.stopPropagation();
+      // Clean up all targets
+      document.querySelectorAll('.ep-settler-target').forEach(el => {
+        el.classList.remove('ep-settler-target');
+        el.style.opacity = '';
+        if (!el.classList.contains('settlement') && !el.classList.contains('city')) {
+          el.style.fill = '';
+        }
+        if (el._epSettlerHandler) {
+          el.removeEventListener('click', el._epSettlerHandler);
+          delete el._epSettlerHandler;
+        }
+      });
+      epUnloadSettler(ship, vertexKey);
+    };
+
+    circle._epSettlerHandler = handler;
+    circle.addEventListener('click', handler);
+  });
+}
+/* ================================================================
    EP SECTION 4 · DISCOVERY (stubs — safe at top level)
    ================================================================ */
 
@@ -629,7 +957,7 @@ epRenderAllShips();
 let epHasRolled  = false;
 let epInMovement = false;
 let epSelectedShip = null; // the ship currently selected for movement
-
+let epSettlerMode  = null; // 'load' | 'unload' | null — current settler action
 
 /* ================================================================
    EP SECTION 7 · ENTRY POINT
