@@ -381,11 +381,21 @@ function epHighlightEdges(edgeKeys, color) {
     line.style.strokeWidth = '4';
     line.style.opacity     = '0.7';
 
-    line._epMoveHandler = () => {
+const moveHandler = () => {
       if (!epSelectedShip) return;
       epMoveShip(epSelectedShip, key);
     };
-    line.addEventListener('click', line._epMoveHandler);
+    line._epMoveHandler = moveHandler;
+    line.addEventListener('click', moveHandler);
+    line.addEventListener('touchend', (e) => { e.preventDefault(); moveHandler(); });
+
+    // Also attach to hit area (previous sibling)
+    const hitArea = line.previousElementSibling;
+    if (hitArea && hitArea.getAttribute('stroke') === 'transparent') {
+      hitArea._epMoveHandler = moveHandler;
+      hitArea.addEventListener('click', moveHandler);
+      hitArea.addEventListener('touchend', (e) => { e.preventDefault(); moveHandler(); });
+    }
   });
 }
 
