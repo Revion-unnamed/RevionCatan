@@ -53,6 +53,7 @@ const TERRAIN = {
   mountains: { cls: 'terrain-mountains', icon: '⛰️',  label: 'Mountains', resource: 'Ore'    },
   desert:    { cls: 'terrain-desert',    icon: '🏜️',  label: 'Desert',    resource: null     },
   lake: { cls: 'terrain-lake', icon: '🏞️', label: 'Lake', resource: null },
+  gold:      { cls: 'terrain-gold',      icon: '🪙',  label: 'Gold',      resource: 'Gold'   },
   ocean:     { cls: 'terrain-ocean',     icon: null,  label: 'Ocean',     resource: null     },
 };
 
