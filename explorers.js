@@ -666,7 +666,15 @@ function epHandleVertexClick(v) {
 
   if (hasCity || takenByOther) return;
 
-  const canSettle  = !hasVillage && isVertexAvailable(v) && canAfford(VILLAGE_COST);
+// Vertex must touch at least one land tile
+  const touchesLand = landTileCache.some(t => {
+    const { x, y } = hexToPixel(t.q, t.r);
+    const corners  = hexCorners(x, y, HEX_SIZE);
+    return corners.some(c =>
+      `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key
+    );
+  });
+  const canSettle  = !hasVillage && touchesLand && isVertexAvailable(v);
   const canSettler = hasVillage &&
                      canAfford(VILLAGE_COST) &&
                      activePlayer().settlers < 2 &&
