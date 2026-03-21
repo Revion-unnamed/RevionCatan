@@ -1299,17 +1299,16 @@ const canRoad = edge.seaCount !== 2 &&
                   isEdgeAvailable(edge) &&
                   (gamePhase !== 'play' || canAfford(ROAD_COST));
 
-  const canShip = GAME_CONFIG.mode === 'explorers' &&
+const canShip = GAME_CONFIG.mode === 'explorers' &&
                   edge.isSea &&
                   canAfford({ Lumber: 1, Wool: 1 }) &&
                   (() => {
-                    // Edge must touch own village or city
                     const [aKey, bKey] = edge.key.split('|');
-                    const touchesOwn = activePlayer().villages.has(aKey) ||
-                                       activePlayer().villages.has(bKey) ||
-                                       activePlayer().cities.has(aKey)   ||
-                                       activePlayer().cities.has(bKey);
-                    if (!touchesOwn) return false;
+
+                    // Edge must touch own harbor settlement
+                    const touchesHarbor = typeof epIsHarborVertex === 'function' &&
+                                          (epIsHarborVertex(aKey) || epIsHarborVertex(bKey));
+                    if (!touchesHarbor) return false;
 
                     // Edge must not border undiscovered tile
                     const bordersUndiscovered = landTileCache.some(t => {
@@ -1323,6 +1322,7 @@ const canRoad = edge.seaCount !== 2 &&
                     });
                     return !bordersUndiscovered;
                   })();
+
 
   // Nothing possible — silent return
   if (!canRoad && !canShip) return;
