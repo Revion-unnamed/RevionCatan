@@ -963,6 +963,7 @@ let setupIndex = 0;
 
 let currentTurn = 1;
 let hasRolledThisTurn = false;
+let freePlacement     = false; // set true to bypass resource cost in placeVillage
 
 function buildSetupOrder() {
   const forward  = players.map(p => p.id);
@@ -1382,8 +1383,8 @@ function placeVillage(v) {
     showMessage('⚠️ Not enough resources — needs 🌲 🐑 🧱 🌾');
     return;
   }
-  if (gamePhase === 'play') spendResources(VILLAGE_COST);
-
+  if (gamePhase === 'play' && !freePlacement) spendResources(VILLAGE_COST);
+ 
   // Find the vertex circle and upgrade it
   const circle = document.querySelector(`[data-key="${v.key}"]`);
   if (!circle) return;
