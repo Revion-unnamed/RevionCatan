@@ -338,11 +338,28 @@ function epRenderShip(ship) {
     'pointer-events': 'all',
   });
 
-  g.appendChild(hitRect);
+g.appendChild(hitRect);
   g.appendChild(body);
   g.appendChild(mast);
   g.appendChild(sail);
+
+  // Render hold contents if ship is carrying something
+  if (ship.hold === 'settler') {
+    const holdLabel = svgEl('text', {
+      x:                  '0',
+      y:                  '3',
+      'text-anchor':      'middle',
+      'dominant-baseline':'central',
+      'font-size':        '7',
+      'pointer-events':   'none',
+      'data-settler-hold':'true',
+    });
+    holdLabel.textContent = '👤';
+    g.appendChild(holdLabel);
+  }
+
   layer.appendChild(g);
+  
 
   // Click handler — Phase 4 will use this for movement
   g.addEventListener('click', (e) => {
