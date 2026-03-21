@@ -763,7 +763,7 @@ function epHandleVertexClick(v) {
     circle.style.opacity = '0.6';
 
     const handler = (e) => {
-      e.stopPropagation();
+      if (e) e.stopPropagation();
       document.querySelectorAll('.ep-settler-target').forEach(el => {
         el.classList.remove('ep-settler-target');
         el.style.opacity = '';
