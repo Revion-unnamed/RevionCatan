@@ -725,7 +725,23 @@ function epHandleVertexClick(v) {
  * epActivateSettlerUnload — highlights valid adjacent vertices for settler placement.
  * Shows message and returns early if no valid vertex exists.
  */
+ function epClearSettlerTargets() {
+  document.querySelectorAll('[data-key]').forEach(el => {
+    el.classList.remove('ep-settler-target');
+    el.style.opacity = '';
+    if (!el.classList.contains('settlement') && !el.classList.contains('city')) {
+      el.style.fill = '';
+    }
+    if (el._epSettlerHandler) {
+      el.removeEventListener('click', el._epSettlerHandler);
+      el.removeEventListener('touchend', el._epSettlerHandler);
+      delete el._epSettlerHandler;
+    }
+  });
+}
+
  function epActivateSettlerUnload(ship) {
+   epClearSettlerTargets();
   const adjVerts = epGetAdjacentVertices(ship);
 
   // Check if any valid vertex exists first
@@ -783,6 +799,7 @@ function epHandleVertexClick(v) {
           delete el._epSettlerHandler;
         }
       });
+      epClearSettlerTargets();
       epUnloadSettler(ship, v);
     };
 
@@ -982,6 +999,7 @@ function epInit() {
   window.runEndTurn = function() {
     epInMovement   = false;
     epClearHighlights();
+    epClearSettlerTargets();
     epSelectedShip = null;
     epHasRolled    = false;
 
