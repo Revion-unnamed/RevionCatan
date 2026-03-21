@@ -1284,16 +1284,39 @@ function onEdgeClick(edge) {
   if (gamePhase !== 'play' && setupAction !== 'road' && setupAction !== 'ship') return;
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
 
-  const canRoad = edge.seaCount !== 2; // at least one land tile
-  const canShip = GAME_CONFIG.mode === 'explorers' && edge.isSea; // at least one sea tile
+  const canRoad = edge.seaCount !== 2 &&
+                  isEdgeAvailable(edge) &&
+                  canAfford(ROAD_COST);
 
-  // Pure sea edge with no ship building — ignore
+  const canShip = GAME_CONFIG.mode === 'explorers' &&
+                  edge.isSea &&
+                  canAfford({ Lumber: 1, Wool: 1 }) &&
+                  (() => {
+                    // Edge must touch own village or city
+                    const [aKey, bKey] = edge.key.split('|');
+                    const touchesOwn = activePlayer().villages.has(aKey) ||
+                                       activePlayer().villages.has(bKey) ||
+                                       activePlayer().cities.has(aKey)   ||
+                                       activePlayer().cities.has(bKey);
+                    if (!touchesOwn) return false;
+
+                    // Edge must not border undiscovered tile
+                    const bordersUndiscovered = landTileCache.some(t => {
+                      if (t.discovered) return false;
+                      const { x, y } = hexToPixel(t.q, t.r);
+                      const corners  = hexCorners(x, y, HEX_SIZE);
+                      const keys     = corners.map(c =>
+                        `${roundCoord(c.x)},${roundCoord(c.y)}`
+                      );
+                      return keys.includes(aKey) && keys.includes(bKey);
+                    });
+                    return !bordersUndiscovered;
+                  })();
+
+  // Nothing possible — silent return
   if (!canRoad && !canShip) return;
 
-  // For road: check availability
-  if (canRoad && !isEdgeAvailable(edge)) return;
-
-document.getElementById('place-prompt')?.remove();
+  document.getElementById('place-prompt')?.remove();
 
   const svg    = document.getElementById('board-svg');
   const rect   = svg.getBoundingClientRect();
@@ -1303,10 +1326,9 @@ document.getElementById('place-prompt')?.remove();
   const mx     = rect.left + ((edge.ax + edge.bx) / 2 - vb.x) * scaleX;
   const my     = rect.top  + ((edge.ay + edge.by) / 2 - vb.y) * scaleY;
 
-  // Build prompt buttons based on edge type
   let buttonsHtml = '';
-  if (canRoad)  buttonsHtml += `<button id="confirm-road">🛤️ Place Road</button>`;
-  if (canShip)  buttonsHtml += `<button id="confirm-ship">⛵ Build Ship</button>`;
+  if (canRoad) buttonsHtml += `<button id="confirm-road">🛤️ Place Road</button>`;
+  if (canShip) buttonsHtml += `<button id="confirm-ship">⛵ Build Ship</button>`;
   buttonsHtml += `<button id="cancel-village">✕</button>`;
 
   const prompt = document.createElement('div');
@@ -1314,7 +1336,7 @@ document.getElementById('place-prompt')?.remove();
   prompt.innerHTML = buttonsHtml;
   document.body.appendChild(prompt);
 
-  const pw   = canRoad && canShip ? 260 : 160;
+  const pw   = canRoad && canShip ? 280 : 160;
   const left = Math.min(mx + 10, window.innerWidth - pw - 8);
   const top  = Math.max(my - 36, 60);
   prompt.style.left        = `${left}px`;
