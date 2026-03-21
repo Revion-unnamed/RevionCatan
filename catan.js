@@ -605,22 +605,25 @@ function renderTile(svg, tile) {
       // Canonical edge key: sort vertex keys so A–B and B–A map to same entry
       const edgeKey = [keyA, keyB].sort().join('|');
 
-      if (!edges.has(edgeKey)) {
+if (!edges.has(edgeKey)) {
         const thisTile = tileMap.get(`${coord.q},${coord.r}`);
-        const isSea    = thisTile ? thisTile.isOcean : false;
+        const isOcean  = thisTile ? thisTile.isOcean : false;
         edges.set(edgeKey, {
           ax: a.x, ay: a.y,
           bx: b.x, by: b.y,
           key: edgeKey,
-          isSea,
+          isSea:    isOcean,
+          seaCount: isOcean ? 1 : 0,
         });
-      } else if (!edges.get(edgeKey).isSea) {
-        // Shared edge between land and ocean — upgrade to sea route
+      } else {
         const thisTile = tileMap.get(`${coord.q},${coord.r}`);
         if (thisTile && thisTile.isOcean) {
           edges.get(edgeKey).isSea = true;
+          edges.get(edgeKey).seaCount = (edges.get(edgeKey).seaCount || 0) + 1;
         }
       }
+ 
+      
     }
   }
 
@@ -1278,37 +1281,63 @@ document.body.appendChild(prompt);
 
 function onEdgeClick(edge) {
   if (typeof epInMovement !== 'undefined' && epInMovement) return;
-  if (gamePhase !== 'play' && setupAction !== 'road') return;
+  if (gamePhase !== 'play' && setupAction !== 'road' && setupAction !== 'ship') return;
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
-  if (!isEdgeAvailable(edge)) return;
 
-  document.getElementById('place-prompt')?.remove();
+  const canRoad = edge.seaCount !== 2; // at least one land tile
+  const canShip = GAME_CONFIG.mode === 'explorers' && edge.isSea; // at least one sea tile
 
-const { x: mx, y: my } = svgToScreen(
-    (edge.ax + edge.bx) / 2,
-    (edge.ay + edge.by) / 2
-  );
+  // Pure sea edge with no ship building — ignore
+  if (!canRoad && !canShip) return;
+
+  // For road: check availability
+  if (canRoad && !isEdgeAvailable(edge)) return;
+
+document.getElementById('place-prompt')?.remove();
+
+  const svg    = document.getElementById('board-svg');
+  const rect   = svg.getBoundingClientRect();
+  const vb     = svg.viewBox.baseVal;
+  const scaleX = rect.width  / vb.width;
+  const scaleY = rect.height / vb.height;
+  const mx     = rect.left + ((edge.ax + edge.bx) / 2 - vb.x) * scaleX;
+  const my     = rect.top  + ((edge.ay + edge.by) / 2 - vb.y) * scaleY;
+
+  // Build prompt buttons based on edge type
+  let buttonsHtml = '';
+  if (canRoad)  buttonsHtml += `<button id="confirm-road">🛤️ Place Road</button>`;
+  if (canShip)  buttonsHtml += `<button id="confirm-ship">⛵ Build Ship</button>`;
+  buttonsHtml += `<button id="cancel-village">✕</button>`;
 
   const prompt = document.createElement('div');
   prompt.id = 'place-prompt';
-  prompt.innerHTML = `<button id="confirm-road">🛤️ Place Road</button><button id="cancel-village">✕</button>`;
+  prompt.innerHTML = buttonsHtml;
   document.body.appendChild(prompt);
-  const pw2  = 160;
-  const left = Math.min(mx + 10, window.innerWidth - pw2 - 8);
-  const top  = Math.max(my - 36, 60);
-  prompt.style.left = `${left}px`;
-  prompt.style.top  = `${top}px`;
-  
 
+  const pw   = canRoad && canShip ? 260 : 160;
+  const left = Math.min(mx + 10, window.innerWidth - pw - 8);
+  const top  = Math.max(my - 36, 60);
+  prompt.style.left        = `${left}px`;
+  prompt.style.top         = `${top}px`;
+  prompt.style.borderColor = activePlayer().color;
   prompt.querySelectorAll('button').forEach(b => {
-  b.style.borderColor = activePlayer().color;
-  b.style.color       = activePlayer().color;
-});
-  document.getElementById('confirm-road').onclick = () => {
+    b.style.borderColor = activePlayer().color;
+    b.style.color       = activePlayer().color;
+  });
+
+  document.getElementById('confirm-road')?.addEventListener('click', () => {
     placeRoad(edge);
     prompt.remove();
-  };
-  document.getElementById('cancel-village').onclick = () => prompt.remove();
+  });
+
+  document.getElementById('confirm-ship')?.addEventListener('click', () => {
+    prompt.remove();
+    if (typeof epPlaceShip === 'function') epPlaceShip(edge.key, false);
+  });
+
+  document.getElementById('cancel-village').addEventListener('click', () => {
+    prompt.remove();
+  });
 }
 
 function placeVillage(v) {
