@@ -740,11 +740,21 @@ function epHandleVertexClick(v) {
     );
   });
   const canSettle  = !hasVillage && touchesLand && isVertexAvailable(v);
+  // Harbor requires touching a sea tile
+  const epAllCoords = [...EP_SEA_COORDS, ...EP_NORTH_COORDS, ...EP_SOUTH_COORDS];
+  const touchesSea  = epAllCoords.some(coord => {
+    const { x, y } = hexToPixel(coord.q, coord.r);
+    const corners   = hexCorners(x, y, HEX_SIZE);
+    return corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key);
+  });
+
   const canSettler = hasVillage &&
+                     activePlayer().harbors.has(v.key) &&
                      canAfford(VILLAGE_COST) &&
                      activePlayer().settlers < 2 &&
                      !activePlayer().settlerVertices?.has(v.key);
-const canHarbor  = hasVillage &&
+  const canHarbor  = hasVillage &&
+                     touchesSea &&
                      !activePlayer().harbors.has(v.key) &&
                      canAfford(EP_HARBOR_COST);
 
