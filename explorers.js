@@ -401,6 +401,8 @@ function epHighlightEdges(edgeKeys, color) {
 function epClearHighlights() {
   document.querySelectorAll('.ep-reachable').forEach(line => {
     line.classList.remove('ep-reachable');
+    // Don't clear style on road lines — they have player colour applied inline
+    if (line.classList.contains('road')) return;
     line.style.stroke      = '';
     line.style.strokeWidth = '';
     line.style.opacity     = '';
