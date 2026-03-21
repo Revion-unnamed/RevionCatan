@@ -598,7 +598,7 @@ function epGetShipsAdjacentToVertex(vertexKey) {
 /**
  * epShowShipActionMenu — shows load/unload prompt when ship tapped outside movement.
  */
-function epShowShipActionMenu(ship) {
+ function epShowShipActionMenu(ship) {
   document.getElementById('place-prompt')?.remove();
 
   const { x: sx, y: sy } = svgToScreen(
@@ -612,7 +612,6 @@ function epShowShipActionMenu(ship) {
     activePlayer().settlerVertices?.has(vk)
   );
   const canLoad   = ship.hold === null && hasSettlerOnAdj;
-  // canUnload: ship has settler — valid vertex check happens in epActivateSettlerUnload
   const canUnload = ship.hold === 'settler';
 
   if (!canLoad && !canUnload) return;
@@ -638,21 +637,25 @@ function epShowShipActionMenu(ship) {
     b.style.color       = activePlayer().color;
   });
 
-  document.getElementById('ship-load')?.addEventListener('click', () => {
+  const loadBtn = document.getElementById('ship-load');
+  if (loadBtn) loadBtn.onclick = () => {
     prompt.remove();
     const settlerVtx = adjVerts.find(vk => activePlayer().settlerVertices?.has(vk));
     if (settlerVtx) epLoadSettler(ship, settlerVtx);
-  });
+  };
 
-  document.getElementById('ship-unload')?.addEventListener('click', () => {
+  const unloadBtn = document.getElementById('ship-unload');
+  if (unloadBtn) unloadBtn.onclick = () => {
     prompt.remove();
     epActivateSettlerUnload(ship);
-  });
+  };
 
-  document.getElementById('cancel-prompt')?.addEventListener('click', () => {
+  document.getElementById('cancel-prompt').onclick = () => {
     prompt.remove();
-  });
+    epClearSettlerTargets();
+  };
 }
+
 
 /**
  * epHandleVertexClick — routes E&P vertex clicks.
