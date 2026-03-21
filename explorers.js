@@ -674,30 +674,17 @@ function epLoadSettler(ship, vertexKey) {
  * epUnloadSettler — places a settler from ship hold onto a vertex as a settlement.
  * The vertex must be valid for settlement placement.
  */
-function epUnloadSettler(ship, vertexKey) {
+ function epUnloadSettler(ship, v) {
   if (ship.hold !== 'settler') {
     showMessage('⚠️ No settler in hold');
     return;
   }
-
-  // Use existing vertex availability check
-  const v = { key: vertexKey, x: 0, y: 0 };
-  const vCircle = document.querySelector(`[data-key="${vertexKey}"]`);
-  if (vCircle) {
-    v.x = parseFloat(vCircle.getAttribute('cx'));
-    v.y = parseFloat(vCircle.getAttribute('cy'));
-  }
-
-  if (!isVertexAvailable(v)) {
-    showMessage('⚠️ Cannot place settlement here');
-    return;
-  }
-
-  // Place settlement — free, no resource cost
   ship.hold = null;
   epRemoveSettlerFromShip(ship);
+  epUpdateShipSVG(ship);
+  // Grant resources back so placeVillage doesn't charge again
+  Object.entries(VILLAGE_COST).forEach(([t, a]) => addResourceForPlayer(activePlayer(), t, a));
   placeVillage(v);
-  showMessage('🏠 Settlement placed! +1 VP');
 }
 
 /**
@@ -734,7 +721,16 @@ function epShowShipActionMenu(ship) {
     activePlayer().settlerVertices?.has(vk)
   );
   const canLoad   = ship.hold === null && hasSettlerOnAdj;
-  const canUnload = ship.hold === 'settler';
+  const validUnloadVerts = adjVerts.filter(vertexKey => {
+    const circle = document.querySelector(`[data-key="${vertexKey}"]`);
+    if (!circle) return false;
+    return isVertexAvailable({
+      key: vertexKey,
+      x:   parseFloat(circle.getAttribute('cx')),
+      y:   parseFloat(circle.getAttribute('cy')),
+    });
+  });
+  const canUnload = ship.hold === 'settler' && validUnloadVerts.length > 0;
 
   if (!canLoad && !canUnload) return;
 
@@ -871,11 +867,12 @@ function epActivateSettlerUnload(ship) {
           delete el._epSettlerHandler;
         }
       });
-      epUnloadSettler(ship, vertexKey);
+      epUnloadSettler(ship, v);
     };
 
-    circle._epSettlerHandler = handler;
+circle._epSettlerHandler = handler;
     circle.addEventListener('click', handler);
+    circle.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
   });
 }
 /* ================================================================
