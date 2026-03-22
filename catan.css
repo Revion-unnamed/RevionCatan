@@ -208,6 +208,44 @@
   color: var(--sand);
   transition: color 0.3s ease;
 }
+#menu-btn {
+  pointer-events: all;
+  background: transparent;
+  color: var(--sand);
+  border: 1px solid var(--sand);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0.6;
+}
+#menu-btn:active { opacity: 1; }
+
+#game-menu {
+  position: fixed;
+  top: 50px;
+  right: 10px;
+  background: #2c1a0e;
+  border: 1px solid var(--sand);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 300;
+}
+
+#game-menu button {
+  background: transparent;
+  color: var(--sand);
+  border: 1px solid var(--sand);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+}
+#game-menu button:active { opacity: 0.7; }
 /* ================================================================
    RESET & BASE
    ================================================================ */
