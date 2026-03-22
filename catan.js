@@ -1244,6 +1244,11 @@ function onVertexClick(v) {
     epHandleVertexClick(v);
     return;
   }
+  // In E&P setup2, place harbor settlement instead of regular village
+  if (GAME_CONFIG.mode === 'explorers' && gamePhase === 'setup2' && setupAction === 'village') {
+    epHandleSetup2Village(v);
+    return;
+  }
 
   const available    = isVertexAvailable(v);
   const hasVillage   = activePlayer().villages.has(v.key);
