@@ -2589,9 +2589,20 @@ document.getElementById('fishermen-toggle').addEventListener('click', () => {
 // Run once the HTML is fully parsed
 document.addEventListener('DOMContentLoaded', () => {
   initStartScreen();
-document.getElementById('reset-btn').addEventListener('click', () => {
+  document.getElementById('menu-btn').addEventListener('click', () => {
+    const menu = document.getElementById('game-menu');
+    menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+  });
+  document.getElementById('reset-btn').addEventListener('click', () => {
     location.reload();
   });
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#menu-btn') && !e.target.closest('#game-menu')) {
+      document.getElementById('game-menu').style.display = 'none';
+    }
+  });
+  
   document.getElementById('cheat-btn').addEventListener('click', () => {
     ['Lumber', 'Brick', 'Wool', 'Grain', 'Ore'].forEach(r =>
       addResourceForPlayer(activePlayer(), r, 5)
