@@ -768,7 +768,12 @@ function epActivateSettlerUnload(ship) {
       y:   parseFloat(circle.getAttribute('cy')),
     });
     gamePhase = _phase;
-    return ok;
+    if (!ok) return false;
+    return landTileCache.some(t => {
+      const { x, y } = hexToPixel(t.q, t.r);
+      const corners  = hexCorners(x, y, HEX_SIZE);
+      return corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === vertexKey);
+    });
   });
 
   if (!hasValid) {
@@ -793,6 +798,14 @@ function epActivateSettlerUnload(ship) {
     const available = isVertexAvailable(v);
     gamePhase = _phase;
     if (!available) return;
+
+// Must touch at least one land tile (not pure sea vertex)
+    const touchesLand = landTileCache.some(t => {
+      const { x, y } = hexToPixel(t.q, t.r);
+      const corners  = hexCorners(x, y, HEX_SIZE);
+      return corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key);
+    });
+    if (!touchesLand) return;
 
     circle.classList.add('ep-settler-target');
     circle.style.fill    = activePlayer().color;
@@ -1020,8 +1033,18 @@ function epActivateSetup2ShipPlacement(vertexKey) {
     line.style.strokeWidth = '4';
     line.style.opacity     = '0.7';
 
-    const handler = () => {
+const handler = () => {
+      // Clear ALL highlighted edges before placing — prevents multiple ships
       epClearHighlights();
+      // Remove handlers from all other valid edges
+      validEdges.forEach(k => {
+        const l = document.querySelector(`line[data-key="${k}"]`);
+        if (l && l._epMoveHandler) {
+          l.removeEventListener('click', l._epMoveHandler);
+          l.removeEventListener('touchend', l._epMoveHandler);
+          delete l._epMoveHandler;
+        }
+      });
 
       const ship = {
         id:        `ship-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
