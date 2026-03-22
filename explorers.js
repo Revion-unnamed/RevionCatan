@@ -1063,9 +1063,6 @@ epAllTileCache = (window._epGeneratedTiles || []).map(t => {
   document.querySelectorAll('.port-marker').forEach(el => el.remove());
   epRenderFaceDownTiles();
   epRenderAllShips();
-
-  const goldBtn = document.getElementById('gold-trade-btn');
-  if (goldBtn) goldBtn.style.display = 'inline-block';
 }
 
 
