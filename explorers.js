@@ -858,7 +858,9 @@ function epRevealTile(tile) {
   if (tile.terrain === 'ocean') {
     showMessage('🌊 Open ocean!', 2000);
   } else if (tile.terrain === 'gold') {
-    showMessage('🪙 Gold field discovered!', 3000);
+    activePlayer().gold = (activePlayer().gold || 0) + 1;
+    updateHudForPlayer(activePlayer());
+    showMessage('🪙 Gold field discovered! +1 🪙', 3000);
   } else if (info && info.resource) {
     addResourceForPlayer(activePlayer(), info.resource, 1);
     showMessage(`🗺️ Discovered ${info.label}! +1 ${info.icon}`, 3000);
@@ -986,6 +988,7 @@ function epShowGoldTradePanel() {
    ================================================================ */
 
 function epHandleSetup2Village(v) {
+  if (epSetup2Done.has(activePlayer().id)) return;
   if (!isVertexAvailable(v)) return;
 
   freePlacement = true;
@@ -1031,6 +1034,7 @@ function epActivateSetup2ShipPlacement(vertexKey) {
       activePlayer().ships.add(key);
       activePlayer().settlers++;
       epRenderShip(ship);
+      epSetup2Done.add(activePlayer().id);
       advanceSetup();
     };
 
@@ -1074,6 +1078,7 @@ var epHasRolled    = false;
 var epInMovement   = false;
 var epSelectedShip = null;
 var epSettlerMode  = null;
+var epSetup2Done = new Set(); // player ids who have completed setup2
 
 
 /* ================================================================
