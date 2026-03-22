@@ -1248,16 +1248,6 @@ window._epGeneratedTiles = tiles;
     }
   });
 
-  // ── Gold trade button ─────────────────────────────────────────
-  const goldTradeBtn = document.createElement('button');
-  goldTradeBtn.id            = 'gold-trade-btn';
-  goldTradeBtn.textContent   = '🪙 Trade';
-  goldTradeBtn.style.display = 'none';
-  document.getElementById('hud').appendChild(goldTradeBtn);
-  goldTradeBtn.addEventListener('click', () => {
-    if (!hasRolledThisTurn) return;
-    epShowGoldTradePanel();
-  });
 
   // ── HUD cleanup ───────────────────────────────────────────────
   document.getElementById('dev-buy-btn').style.display    = 'none';
