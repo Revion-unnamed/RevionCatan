@@ -7,13 +7,6 @@
      <script src="fishermen.js"></script>   ← only if also using fishermen
      <script src="explorers.js"></script>
 
-   This file overrides the hook functions defined in catan.js to
-   replace Classic Catan with the Explorers & Pirates rule set.
-   It never modifies catan.js internals directly.
-
-   All overrides are defined INSIDE epInit() so they only exist
-   when E&P mode is actually activated — never during Classic play.
-
    Scenarios implemented:
      [ ] Scenario 1 · Land Ho!          — ships, settlers, harbor settlements
      [ ] Scenario 2 · Pirate Lairs      — crews, pirate ship, pirate lairs
@@ -29,13 +22,15 @@
 
 function activateExplorersMode() {
   GAME_CONFIG.mode    = 'explorers';
-  GAME_CONFIG.vpToWin = 8; // Scenario 1 (Land Ho!) target
+  GAME_CONFIG.vpToWin = 8;
 }
 
 
-// ── Full board layout: 6-7-8-8-8-7-6 flat hexagon (50 tiles total) ──
+/* ================================================================
+   EP SECTION 2 · BOARD COORDINATES & TERRAIN POOLS
+   ================================================================ */
 
-// --- Starting island (15 land tiles, leftmost 2-2-2-3-2-2-2 of each row) ---
+// --- Starting island (15 land tiles) ---
 const EP_START_COORDS = [
   { q:  1, r: -3 }, { q:  2, r: -3 },
   { q:  0, r: -2 }, { q:  1, r: -2 },
@@ -46,34 +41,48 @@ const EP_START_COORDS = [
   { q: -2, r:  3 }, { q: -1, r:  3 },
 ];
 
-// Terrains shuffled from base game pool per rulebook
 const EP_START_TERRAINS_POOL = [
   'fields', 'fields', 'hills', 'hills', 'mountains',
   'pasture', 'forest', 'pasture', 'forest', 'fields',
   'hills', 'mountains', 'mountains', 'pasture', 'forest',
 ];
 
-// Number tokens — shuffled with no-adjacent-reds rule
 const EP_START_TOKENS = [11, 5, 3, 9, 10, 8, 4, 6, 6, 3, 11, 9, 4, 5, 10];
 
-// --- Northern unexplored area (6 tiles, face-down, upper right) ---
+// --- Northern unexplored area (9 tiles: 6 land + 1 gold + 2 ocean, all face-down) ---
+// All 9 terrains are shuffled together across all 9 positions — ocean positions are random
 const EP_NORTH_COORDS = [
   { q:  4, r: -3 }, { q:  5, r: -3 }, { q:  6, r: -3 },
   { q:  4, r: -2 }, { q:  5, r: -2 }, { q:  6, r: -2 },
   { q:  3, r: -1 }, { q:  4, r: -1 }, { q:  6, r: -1 },
 ];
 
-// --- Southern unexplored area (6 tiles, face-down, lower right) ---
+const EP_NORTH_TERRAIN_POOL = [
+  'forest', 'pasture', 'fields', 'hills', 'mountains', 'fields',
+  'gold',
+  'ocean', 'ocean',
+];
+// Tokens for the 7 land tiles (6 land + 1 gold) — assigned in shuffle order skipping ocean
+const EP_NORTH_TOKENS = [3, 4, 5, 6, 8, 9, 10];
+
+// --- Southern unexplored area (9 tiles: 6 land + 1 gold + 2 ocean, all face-down) ---
 const EP_SOUTH_COORDS = [
   { q:  2, r:  1 }, { q:  3, r:  1 }, { q:  5, r:  1 },
   { q:  2, r:  2 }, { q:  3, r:  2 }, { q:  4, r:  2 },
   { q:  1, r:  3 }, { q:  2, r:  3 }, { q:  3, r:  3 },
 ];
 
-// --- Sea hexes (23 tiles, always face-up) ---
+const EP_SOUTH_TERRAIN_POOL = [
+  'forest', 'hills', 'mountains', 'pasture', 'fields', 'mountains',
+  'gold',
+  'ocean', 'ocean',
+];
+const EP_SOUTH_TOKENS = [4, 5, 6, 8, 9, 10, 11];
+
+// --- Sea hexes (always face-up, 17 tiles) ---
 const EP_SEA_COORDS = [
-  { q:  3, r: -3 }, 
-  { q:  2, r: -2 }, { q:  3, r: -2 }, 
+  { q:  3, r: -3 },
+  { q:  2, r: -2 }, { q:  3, r: -2 },
   { q:  1, r: -1 }, { q:  2, r: -1 }, { q:  5, r: -1 },
   { q:  1, r:  0 }, { q:  2, r:  0 }, { q:  3, r:  0 }, { q:  4, r:  0 }, { q:  5, r:  0 },
   { q:  0, r:  1 }, { q:  1, r:  1 }, { q:  4, r:  1 },
@@ -81,36 +90,23 @@ const EP_SEA_COORDS = [
   { q:  0, r:  3 },
 ];
 
-// Terrain pools for unexplored areas — shuffled at game start
-const EP_NORTH_TERRAINS = ['forest', 'pasture', 'fields', 'hills', 'mountains', 'fields', 'gold'];
-const EP_SOUTH_TERRAINS = ['forest', 'hills', 'mountains', 'pasture', 'fields', 'mountains', 'gold'];
-
-// Number token pools — 6 tokens each, shuffled separately
-const EP_NORTH_TOKENS = [3, 4, 5, 6, 8, 9, 10];
-const EP_SOUTH_TOKENS = [4, 5, 6, 8, 9, 10, 11];
 const EP_HARBOR_COST = { Grain: 2, Ore: 2 };
 
+
 /* ================================================================
-   EP SECTION 3 · SHIP DATA MODEL (state — safe at top level)
-   Empty until E&P mode runs. Never affects Classic.
+   EP SECTION 3 · SHIP DATA MODEL
    ================================================================ */
 
-// All active ships: [{ edgeKey, playerId, hold, movesLeft }]
-let epShips = [];
-
-// Edge adjacency map for ship movement — built in Phase 2
+let epShips         = [];
 let epEdgeAdjacency = new Map();
-let epSeaEdges      = new Set(); // all sea edge keys — populated by epBuildEdgeAdjacency
+let epSeaEdges      = new Set();
 
-/**
- * epBuildEdgeAdjacency — computes sea edge adjacency.
- */
 function epBuildEdgeAdjacency() {
   const allTiles = [
-    ...EP_START_COORDS.map(c  => ({ ...c, isOcean: false })),
-    ...EP_SEA_COORDS.map(c    => ({ ...c, isOcean: true  })),
-    ...EP_NORTH_COORDS.map(c  => ({ ...c, isOcean: false })),
-    ...EP_SOUTH_COORDS.map(c  => ({ ...c, isOcean: false })),
+    ...EP_START_COORDS.map(c => ({ ...c, isOcean: false })),
+    ...EP_SEA_COORDS.map(c   => ({ ...c, isOcean: true  })),
+    ...EP_NORTH_COORDS.map(c => ({ ...c, isOcean: false })),
+    ...EP_SOUTH_COORDS.map(c => ({ ...c, isOcean: false })),
   ];
 
   const { edges } = buildGraph(window.buildGraphCoords, allTiles);
@@ -140,10 +136,6 @@ function epBuildEdgeAdjacency() {
   }
 }
 
-/**
- * epGetReachableEdges — BFS from a ship's current edge.
- * Stops expanding past edges that touch undiscovered tiles.
- */
 function epGetReachableEdges(ship) {
   const reachable = new Set();
   const queue     = [{ key: ship.edgeKey, movesLeft: ship.movesLeft }];
@@ -161,7 +153,6 @@ function epGetReachableEdges(ship) {
       const occupancy = epShips.filter(s => s.edgeKey === neighbourKey).length;
       if (occupancy < 2) reachable.add(neighbourKey);
 
-      // Check if this edge touches an undiscovered tile — stop BFS here
       const line = document.querySelector(`line[data-key="${neighbourKey}"]`);
       let touchesUndiscovered = false;
       if (line) {
@@ -192,9 +183,6 @@ function epGetReachableEdges(ship) {
   return reachable;
 }
 
-/**
- * epGetDistance — BFS shortest path between two edge keys.
- */
 function epGetDistance(fromKey, toKey) {
   if (fromKey === toKey) return 0;
   const queue   = [{ key: fromKey, dist: 0 }];
@@ -213,9 +201,6 @@ function epGetDistance(fromKey, toKey) {
   return Infinity;
 }
 
-/**
- * epMoveShip — moves a ship to a new edge, deducting movement points.
- */
 function epMoveShip(ship, targetEdgeKey) {
   epClearHighlights();
 
@@ -245,9 +230,6 @@ function epMoveShip(ship, targetEdgeKey) {
    EP SECTION 3B · SHIP RENDERING
    ================================================================ */
 
-/**
- * epRenderShip — draws a ship SVG element on an edge.
- */
 function epRenderShip(ship) {
   const svg   = document.getElementById('board-svg');
   const layer = document.getElementById('ships-layer');
@@ -294,7 +276,6 @@ function epRenderShip(ship) {
     cursor:           'pointer',
   });
 
-  // Large invisible hit area for mobile tapping
   const hitRect = svgEl('rect', {
     x: '-20', y: '-20', width: '40', height: '40',
     fill: 'transparent', 'pointer-events': 'all',
@@ -305,7 +286,6 @@ function epRenderShip(ship) {
   g.appendChild(mast);
   g.appendChild(sail);
 
-  // Render hold contents
   if (ship.hold === 'settler') {
     const holdLabel = svgEl('text', {
       x: '0', y: '3',
@@ -334,11 +314,7 @@ function epUpdateShipSVG(ship) {
   epRenderShip(ship);
 }
 
-/**
- * epOnShipClick — handles ship taps in and out of movement phase.
- */
 function epOnShipClick(ship) {
-  // Outside movement phase — handle load/unload
   if (!epInMovement) {
     if (gamePhase !== 'play' || !hasRolledThisTurn) return;
     if (ship.playerId !== activePlayer().id) return;
@@ -346,7 +322,6 @@ function epOnShipClick(ship) {
     return;
   }
 
-  // Only the selected ship can be clicked to deselect
   if (epSelectedShip) {
     if (epSelectedShip.id === ship.id) {
       epClearHighlights();
@@ -381,7 +356,7 @@ function epHighlightEdges(edgeKeys, color) {
     line.style.strokeWidth = '4';
     line.style.opacity     = '0.7';
 
-const moveHandler = () => {
+    const moveHandler = () => {
       if (!epSelectedShip) return;
       epMoveShip(epSelectedShip, key);
     };
@@ -389,7 +364,6 @@ const moveHandler = () => {
     line.addEventListener('click', moveHandler);
     line.addEventListener('touchend', (e) => { e.preventDefault(); moveHandler(); });
 
-    // Also attach to hit area (previous sibling)
     const hitArea = line.previousElementSibling;
     if (hitArea && hitArea.getAttribute('stroke') === 'transparent') {
       hitArea._epMoveHandler = moveHandler;
@@ -425,9 +399,6 @@ function epRenderAllShips() {
   epShips.forEach(s => epRenderShip(s));
 }
 
-/**
- * epRenderFaceDownTiles — draws grey overlays over undiscovered tiles.
- */
 function epRenderFaceDownTiles() {
   const svg = document.getElementById('board-svg');
 
@@ -461,9 +432,6 @@ function epRenderFaceDownTiles() {
   });
 }
 
-/**
- * epPlaceShip — places a ship on an edge for the active player.
- */
 function epPlaceShip(edgeKey, free = false) {
   if (!free) {
     if (!canAfford({ Lumber: 1, Wool: 1 })) {
@@ -489,12 +457,9 @@ function epPlaceShip(edgeKey, free = false) {
 
 
 /* ================================================================
-   EP SECTION 3C · SETTLERS
+   EP SECTION 3C · SETTLERS & HARBORS
    ================================================================ */
 
-/**
- * epBuildSettler — builds a settler piece on own settlement vertex.
- */
 function epBuildSettler(vertexKey) {
   if (activePlayer().settlers >= 2) {
     showMessage('⚠️ Already have 2 settlers');
@@ -521,10 +486,6 @@ function epBuildSettler(vertexKey) {
   showMessage('👤 Settler built');
 }
 
-/**
- * epBuildHarbor — upgrades a settlement to a harbor settlement.
- * Costs 2 Grain + 2 Ore. Awards +1 VP. Enables ship building.
- */
 function epBuildHarbor(vertexKey) {
   if (!activePlayer().villages.has(vertexKey)) {
     showMessage('⚠️ Must build harbor on own settlement');
@@ -546,13 +507,9 @@ function epBuildHarbor(vertexKey) {
   showMessage('⚓ Harbor built! +1 VP');
 }
 
-/**
- * epRenderHarbor — replaces the 🏠 icon with 🏠🌊 on a vertex.
- */
 function epRenderHarbor(vertexKey) {
   const svg = document.getElementById('board-svg');
 
-  // Replace existing village icon
   const existing = [...svg.querySelectorAll('.village-icon')].find(el => {
     const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
     if (!circle) return false;
@@ -561,18 +518,14 @@ function epRenderHarbor(vertexKey) {
   });
   if (existing) existing.textContent = '🏠🌊';
 
-  // Tag the vertex circle so ship placement can find harbors
   const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
   if (circle) circle.setAttribute('data-harbor', 'true');
 }
 
-/**
- * epIsHarborVertex — returns true if a vertex key is a harbor settlement
- * belonging to the active player.
- */
 function epIsHarborVertex(vertexKey) {
   return activePlayer().harbors.has(vertexKey);
 }
+
 function epRenderSettlerOnVertex(vertexKey) {
   const svg    = document.getElementById('board-svg');
   const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
@@ -628,10 +581,6 @@ function epLoadSettler(ship, vertexKey) {
   showMessage('👤 Settler loaded');
 }
 
-/**
- * epUnloadSettler — places settler from ship hold as a free settlement.
- * Uses freePlacement flag so placeVillage doesn't charge again.
- */
 function epUnloadSettler(ship, v) {
   if (ship.hold !== 'settler') {
     showMessage('⚠️ No settler in hold');
@@ -657,10 +606,7 @@ function epGetShipsAdjacentToVertex(vertexKey) {
   });
 }
 
-/**
- * epShowShipActionMenu — shows load/unload prompt when ship tapped outside movement.
- */
- function epShowShipActionMenu(ship) {
+function epShowShipActionMenu(ship) {
   document.getElementById('place-prompt')?.remove();
 
   const { x: sx, y: sy } = svgToScreen(
@@ -668,13 +614,10 @@ function epGetShipsAdjacentToVertex(vertexKey) {
     parseFloat(document.querySelector(`line[data-key="${ship.edgeKey}"]`)?.getAttribute('y1') || 0)
   );
 
-  const adjVerts = epGetAdjacentVertices(ship);
-
-  const hasSettlerOnAdj = adjVerts.some(vk =>
-    activePlayer().settlerVertices?.has(vk)
-  );
-  const canLoad   = ship.hold === null && hasSettlerOnAdj;
-  const canUnload = ship.hold === 'settler';
+  const adjVerts        = epGetAdjacentVertices(ship);
+  const hasSettlerOnAdj = adjVerts.some(vk => activePlayer().settlerVertices?.has(vk));
+  const canLoad         = ship.hold === null && hasSettlerOnAdj;
+  const canUnload       = ship.hold === 'settler';
 
   if (!canLoad && !canUnload) return;
 
@@ -718,11 +661,6 @@ function epGetShipsAdjacentToVertex(vertexKey) {
   };
 }
 
-
-/**
- * epHandleVertexClick — routes E&P vertex clicks.
- * Shows settlement or settler build options.
- */
 function epHandleVertexClick(v) {
   const hasVillage   = activePlayer().villages.has(v.key);
   const hasCity      = players.some(p => p.cities.has(v.key));
@@ -731,16 +669,12 @@ function epHandleVertexClick(v) {
 
   if (hasCity || takenByOther) return;
 
-// Vertex must touch at least one land tile
   const touchesLand = landTileCache.some(t => {
     const { x, y } = hexToPixel(t.q, t.r);
     const corners  = hexCorners(x, y, HEX_SIZE);
-    return corners.some(c =>
-      `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key
-    );
+    return corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key);
   });
-  const canSettle  = !hasVillage && touchesLand && isVertexAvailable(v);
-  // Harbor requires touching a sea tile
+
   const epAllCoords = [...EP_SEA_COORDS, ...EP_NORTH_COORDS, ...EP_SOUTH_COORDS];
   const touchesSea  = epAllCoords.some(coord => {
     const { x, y } = hexToPixel(coord.q, coord.r);
@@ -748,6 +682,7 @@ function epHandleVertexClick(v) {
     return corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key);
   });
 
+  const canSettle  = !hasVillage && touchesLand && isVertexAvailable(v);
   const canSettler = hasVillage &&
                      activePlayer().harbors.has(v.key) &&
                      canAfford(VILLAGE_COST) &&
@@ -789,13 +724,11 @@ function epHandleVertexClick(v) {
     placeVillage(v);
     prompt.remove();
   });
-
   document.getElementById('confirm-settler')?.addEventListener('click', () => {
     epBuildSettler(v.key);
     prompt.remove();
   });
-
-document.getElementById('confirm-harbor')?.addEventListener('click', () => {
+  document.getElementById('confirm-harbor')?.addEventListener('click', () => {
     epBuildHarbor(v.key);
     prompt.remove();
   });
@@ -804,11 +737,7 @@ document.getElementById('confirm-harbor')?.addEventListener('click', () => {
   });
 }
 
-/**
- * epActivateSettlerUnload — highlights valid adjacent vertices for settler placement.
- * Shows message and returns early if no valid vertex exists.
- */
- function epClearSettlerTargets() {
+function epClearSettlerTargets() {
   document.querySelectorAll('[data-key]').forEach(el => {
     el.classList.remove('ep-settler-target');
     el.style.opacity = '';
@@ -823,12 +752,10 @@ document.getElementById('confirm-harbor')?.addEventListener('click', () => {
   });
 }
 
- function epActivateSettlerUnload(ship) {
-   console.log('epActivateSettlerUnload - ship.hold:', ship.hold, 'ship.id:', ship.id);
-   epClearSettlerTargets();
+function epActivateSettlerUnload(ship) {
+  epClearSettlerTargets();
   const adjVerts = epGetAdjacentVertices(ship);
 
-  // Check if any valid vertex exists first
   const hasValid = adjVerts.some(vertexKey => {
     const circle = document.querySelector(`[data-key="${vertexKey}"]`);
     if (!circle) return false;
@@ -886,16 +813,11 @@ document.getElementById('confirm-harbor')?.addEventListener('click', () => {
   });
 }
 
-    
 
 /* ================================================================
-   EP SECTION 4 · DISCOVERY
+   EP SECTION 4 · DISCOVERY & GOLD
    ================================================================ */
 
-/**
- * epCheckDiscovery — checks if moving to an edge reveals any tiles.
- * Sets ship.movesLeft = 0 on discovery.
- */
 function epCheckDiscovery(edgeKey, ship = null) {
   const line = document.querySelector(`line[data-key="${edgeKey}"]`);
   if (!line) return;
@@ -925,9 +847,6 @@ function epCheckDiscovery(edgeKey, ship = null) {
   });
 }
 
-/**
- * epRevealTile — removes face-down overlay and awards discovery resource.
- */
 function epRevealTile(tile) {
   tile.discovered = true;
 
@@ -935,12 +854,149 @@ function epRevealTile(tile) {
   document.querySelector(`[data-facedown-lbl="${tile.q},${tile.r}"]`)?.remove();
 
   const info = TERRAIN[tile.terrain];
-  if (info && info.resource) {
+  if (tile.terrain === 'ocean') {
+    showMessage('🌊 Open ocean!', 2000);
+  } else if (tile.terrain === 'gold') {
+    showMessage('🪙 Gold field discovered!', 3000);
+  } else if (info && info.resource) {
     addResourceForPlayer(activePlayer(), info.resource, 1);
     showMessage(`🗺️ Discovered ${info.label}! +1 ${info.icon}`, 3000);
   } else {
     showMessage('🗺️ New land discovered!', 3000);
   }
+}
+
+function epCollectGold(roll) {
+  landTileCache.filter(t => t.terrain === 'gold' && t.number === roll && t.discovered).forEach(tile => {
+    const { x, y } = hexToPixel(tile.q, tile.r);
+    const corners  = hexCorners(x, y, HEX_SIZE);
+    const keys     = corners.map(c => `${roundCoord(c.x)},${roundCoord(c.y)}`);
+
+    players.forEach(p => {
+      const adjacent = keys.some(k => p.villages.has(k) || p.cities.has(k));
+      if (adjacent) {
+        p.gold = (p.gold || 0) + 2;
+        showMessage(`🪙 ${p.name} earned 2 gold!`, 2000);
+      }
+    });
+  });
+  updateHudForPlayer(activePlayer());
+}
+
+function epShowGoldTradePanel() {
+  if ((activePlayer().gold || 0) < 2) {
+    showMessage('⚠️ Need at least 2 gold to trade');
+    return;
+  }
+
+  document.getElementById('gold-trade-panel')?.remove();
+
+  const panel = document.createElement('div');
+  panel.id = 'gold-trade-panel';
+  panel.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:#2c1a0e;border:2px solid ${activePlayer().color};
+    border-radius:12px;padding:12px;z-index:200;
+    display:flex;flex-direction:column;gap:8px;align-items:center;
+  `;
+
+  panel.innerHTML = `
+    <div style="color:#f5ead0;font-size:0.85rem;margin-bottom:4px">
+      🪙 ${activePlayer().gold} gold — Trade 2 for:
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="gold-res-btn" data-res="Lumber">🌲 Lumber</button>
+      <button class="gold-res-btn" data-res="Brick">🧱 Brick</button>
+      <button class="gold-res-btn" data-res="Wool">🐑 Wool</button>
+      <button class="gold-res-btn" data-res="Grain">🌾 Grain</button>
+      <button class="gold-res-btn" data-res="Ore">⛰️ Ore</button>
+    </div>
+    <button id="gold-trade-cancel">✕ Cancel</button>
+  `;
+
+  panel.querySelectorAll('.gold-res-btn').forEach(btn => {
+    btn.style.cssText = `
+      background:transparent;border:1px solid ${activePlayer().color};
+      color:${activePlayer().color};border-radius:8px;
+      padding:6px 10px;font-size:0.8rem;cursor:pointer;
+    `;
+    btn.addEventListener('click', () => {
+      const res = btn.dataset.res;
+      activePlayer().gold -= 2;
+      addResourceForPlayer(activePlayer(), res, 1);
+      panel.remove();
+      updateHudForPlayer(activePlayer());
+      showMessage(`🪙 Traded 2 gold for 1 ${res}`);
+    });
+  });
+
+  document.getElementById('gold-trade-cancel').style.cssText = `
+    background:transparent;border:1px solid #888;color:#888;
+    border-radius:8px;padding:4px 12px;font-size:0.8rem;cursor:pointer;margin-top:4px;
+  `;
+  document.getElementById('gold-trade-cancel').addEventListener('click', () => panel.remove());
+
+  document.body.appendChild(panel);
+}
+
+
+/* ================================================================
+   EP SECTION 4B · SETUP 2
+   ================================================================ */
+
+function epHandleSetup2Village(v) {
+  if (!isVertexAvailable(v)) return;
+
+  freePlacement = true;
+  placeVillage(v);
+  freePlacement = false;
+  activePlayer().harbors.add(v.key);
+  epRenderHarbor(v.key);
+  updateVP(activePlayer(), 1);
+
+  showMessage('⛵ Now place your settler ship');
+  setupAction = 'ship';
+  updateTurnLabel();
+  epActivateSetup2ShipPlacement(v.key);
+}
+
+function epActivateSetup2ShipPlacement(vertexKey) {
+  const validEdges = new Set();
+  epSeaEdges.forEach(key => {
+    const [aKey, bKey] = key.split('|');
+    if (aKey === vertexKey || bKey === vertexKey) validEdges.add(key);
+  });
+
+  validEdges.forEach(key => {
+    const line = document.querySelector(`line[data-key="${key}"]`);
+    if (!line) return;
+
+    line.classList.add('ep-reachable');
+    line.style.stroke      = activePlayer().color;
+    line.style.strokeWidth = '4';
+    line.style.opacity     = '0.7';
+
+    const handler = () => {
+      epClearHighlights();
+
+      const ship = {
+        id:        `ship-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        edgeKey:   key,
+        playerId:  activePlayer().id,
+        hold:      'settler',
+        movesLeft: 0,
+      };
+      epShips.push(ship);
+      activePlayer().ships.add(key);
+      activePlayer().settlers++;
+      epRenderShip(ship);
+      advanceSetup();
+    };
+
+    line._epMoveHandler = handler;
+    line.addEventListener('click', handler);
+    line.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
+  });
 }
 
 
@@ -951,23 +1007,21 @@ function epRevealTile(tile) {
 function epInitBoard() {
   epBuildEdgeAdjacency();
 
-  // Append ships layer after vertices so it sits on top and receives clicks
   const svg = document.getElementById('board-svg');
   if (!document.getElementById('ships-layer')) {
     svg.appendChild(svgEl('g', { id: 'ships-layer' }));
   }
 
-  // Remove stray text elements above ships-layer (port label remnants)
   [...svg.children].forEach(el => {
     if (el.tagName === 'text') el.remove();
   });
 
-  console.log(`[E&P] Sea edges: ${epSeaEdges.size}`);
-  console.log(`[E&P] Adjacency entries: ${epEdgeAdjacency.size}`);
-
   document.querySelectorAll('.port-marker').forEach(el => el.remove());
   epRenderFaceDownTiles();
   epRenderAllShips();
+
+  const goldBtn = document.getElementById('gold-trade-btn');
+  if (goldBtn) goldBtn.style.display = 'inline-block';
 }
 
 
@@ -1009,24 +1063,50 @@ function epInit() {
   window.buildBoardOverride = function() {
     const tiles = [];
 
+    // Starting island
     const startTerrains = shuffle([...EP_START_TERRAINS_POOL]);
     const startTokens   = shuffleNoAdjacentReds(EP_START_COORDS, startTerrains, [...EP_START_TOKENS]);
     EP_START_COORDS.forEach((coord, i) => {
       tiles.push({ ...coord, terrain: startTerrains[i], number: startTokens[i], isOcean: false, discovered: true });
     });
 
-    const northTerrains = shuffle([...EP_NORTH_TERRAINS]);
-    const northTokens   = shuffleNoAdjacentReds(EP_NORTH_COORDS, northTerrains, [...EP_NORTH_TOKENS]);
+    // Northern unexplored — shuffle all 9 terrains across all 9 positions
+    const northTerrains     = shuffle([...EP_NORTH_TERRAIN_POOL]);
+    const northLandCoords   = EP_NORTH_COORDS.filter((_, i) => northTerrains[i] !== 'ocean');
+    const northLandTerrains = northTerrains.filter(t => t !== 'ocean');
+    const northTokens       = shuffleNoAdjacentReds(northLandCoords, northLandTerrains, [...EP_NORTH_TOKENS]);
+    let northTokenIdx = 0;
     EP_NORTH_COORDS.forEach((coord, i) => {
-      tiles.push({ ...coord, terrain: northTerrains[i], number: northTokens[i], isOcean: false, discovered: false });
+      const terrain = northTerrains[i];
+      const isOcean = terrain === 'ocean';
+      tiles.push({
+        ...coord,
+        terrain,
+        number:     isOcean ? null : northTokens[northTokenIdx++],
+        isOcean,
+        discovered: false,
+      });
     });
 
-    const southTerrains = shuffle([...EP_SOUTH_TERRAINS]);
-    const southTokens   = shuffleNoAdjacentReds(EP_SOUTH_COORDS, southTerrains, [...EP_SOUTH_TOKENS]);
+    // Southern unexplored — same pattern
+    const southTerrains     = shuffle([...EP_SOUTH_TERRAIN_POOL]);
+    const southLandCoords   = EP_SOUTH_COORDS.filter((_, i) => southTerrains[i] !== 'ocean');
+    const southLandTerrains = southTerrains.filter(t => t !== 'ocean');
+    const southTokens       = shuffleNoAdjacentReds(southLandCoords, southLandTerrains, [...EP_SOUTH_TOKENS]);
+    let southTokenIdx = 0;
     EP_SOUTH_COORDS.forEach((coord, i) => {
-      tiles.push({ ...coord, terrain: southTerrains[i], number: southTokens[i], isOcean: false, discovered: false });
+      const terrain = southTerrains[i];
+      const isOcean = terrain === 'ocean';
+      tiles.push({
+        ...coord,
+        terrain,
+        number:     isOcean ? null : southTokens[southTokenIdx++],
+        isOcean,
+        discovered: false,
+      });
     });
 
+    // Sea hexes
     EP_SEA_COORDS.forEach(coord => {
       tiles.push({ ...coord, terrain: 'ocean', number: null, isOcean: true, discovered: true });
     });
@@ -1052,7 +1132,10 @@ function epInit() {
 
     document.getElementById('turn-label').textContent = `Turn ${currentTurn} · Rolled ${roll}`;
 
-    if (roll !== 7) collectResources(roll);
+    if (roll !== 7) {
+      collectResources(roll);
+      epCollectGold(roll);
+    }
 
     showRollOverlay(d1, d2, roll, () => {
       if (roll === 7) {
@@ -1096,6 +1179,14 @@ function epInit() {
     document.getElementById('roll-dice-btn').style.display  = 'inline-block';
   };
 
+  // ── Override 7: HUD — show gold ──────────────────────────────
+  const _originalUpdateHud = updateHudForPlayer;
+  window.updateHudForPlayer = function(player) {
+    _originalUpdateHud(player);
+    const goldEl = document.getElementById('gold-display');
+    if (goldEl) goldEl.querySelector('span').textContent = player.gold || 0;
+  };
+
   // ── Move Ships button ─────────────────────────────────────────
   document.getElementById('move-ships-btn').addEventListener('click', () => {
     if (epInMovement) {
@@ -1109,6 +1200,17 @@ function epInit() {
       document.getElementById('move-ships-btn').textContent = '✓ Done Moving';
       showMessage('⛵ Tap a ship to move it');
     }
+  });
+
+  // ── Gold trade button ─────────────────────────────────────────
+  const goldTradeBtn = document.createElement('button');
+  goldTradeBtn.id            = 'gold-trade-btn';
+  goldTradeBtn.textContent   = '🪙 Trade';
+  goldTradeBtn.style.display = 'none';
+  document.getElementById('hud').appendChild(goldTradeBtn);
+  goldTradeBtn.addEventListener('click', () => {
+    if (!hasRolledThisTurn) return;
+    epShowGoldTradePanel();
   });
 
   // ── HUD cleanup ───────────────────────────────────────────────
