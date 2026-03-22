@@ -100,6 +100,7 @@ const EP_HARBOR_COST = { Grain: 2, Ore: 2 };
 let epShips         = [];
 let epEdgeAdjacency = new Map();
 let epSeaEdges      = new Set();
+let epAllTileCache  = [];
 
 function epBuildEdgeAdjacency() {
   const allTiles = [
@@ -164,7 +165,7 @@ function epGetReachableEdges(ship) {
           `${roundCoord(ax)},${roundCoord(ay)}`,
           `${roundCoord(bx)},${roundCoord(by)}`,
         ];
-        touchesUndiscovered = landTileCache.some(t => {
+        touchesUndiscovered = epAllTileCache.some(t => {
           if (t.discovered) return false;
           const { x, y } = hexToPixel(t.q, t.r);
           const corners  = hexCorners(x, y, HEX_SIZE);
@@ -409,7 +410,7 @@ function epRenderFaceDownTiles() {
     svg.insertBefore(layer, edgesLayer);
   }
 
-  landTileCache.filter(t => !t.discovered).forEach(tile => {
+  epAllTileCache.filter(t => !t.discovered).forEach(tile => {
     const { x, y } = hexToPixel(tile.q, tile.r);
     const corners  = hexCorners(x, y, HEX_SIZE);
     const pts      = cornersToPoints(corners);
@@ -832,7 +833,7 @@ function epCheckDiscovery(edgeKey, ship = null) {
     `${roundCoord(bx)},${roundCoord(by)}`,
   ];
 
-  landTileCache.filter(t => !t.discovered).forEach(tile => {
+  epAllTileCache.filter(t => !t.discovered).forEach(tile => {
     const { x, y } = hexToPixel(tile.q, tile.r);
     const corners  = hexCorners(x, y, HEX_SIZE);
 
@@ -882,7 +883,47 @@ function epCollectGold(roll) {
   });
   updateHudForPlayer(activePlayer());
 }
+/**
+ * epInjectGoldTradeRow — adds a gold trade row to the normal trade panel.
+ * Called from updateHudForPlayer override so it stays in sync.
+ */
+function epInjectGoldTradeRow() {
+  const panel = document.getElementById('trade-panel');
+  if (!panel) return;
 
+  // Remove existing gold row to rebuild fresh
+  panel.querySelector('#ep-gold-trade-row')?.remove();
+
+  const hasGold = (activePlayer().gold || 0) >= 2;
+
+  const row = document.createElement('div');
+  row.id        = 'ep-gold-trade-row';
+  row.className = 'trade-row';
+  row.innerHTML = `
+    <span class="trade-label">🪙🪙 →</span>
+    <div class="trade-targets">
+      ${RESOURCE_CONFIG.map(({ type, icon }) => `
+        <button class="trade-btn ep-gold-btn"
+                data-res="${type}"
+                style="opacity:${hasGold ? '1' : '0.4'};pointer-events:${hasGold ? 'all' : 'none'}">
+          ${icon}
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  row.querySelectorAll('.ep-gold-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if ((activePlayer().gold || 0) < 2) return;
+      activePlayer().gold -= 2;
+      addResourceForPlayer(activePlayer(), btn.dataset.res, 1);
+      updateHudForPlayer(activePlayer());
+      showMessage(`🪙 Traded 2 gold for 1 ${btn.dataset.res}`);
+    });
+  });
+
+  panel.appendChild(row);
+}
 function epShowGoldTradePanel() {
   if ((activePlayer().gold || 0) < 2) {
     showMessage('⚠️ Need at least 2 gold to trade');
@@ -1015,7 +1056,10 @@ function epInitBoard() {
   [...svg.children].forEach(el => {
     if (el.tagName === 'text') el.remove();
   });
-
+epAllTileCache = (window._epGeneratedTiles || []).map(t => {
+    const land = landTileCache.find(l => l.q === t.q && l.r === t.r);
+    return land || t;
+  });
   document.querySelectorAll('.port-marker').forEach(el => el.remove());
   epRenderFaceDownTiles();
   epRenderAllShips();
@@ -1110,7 +1154,7 @@ function epInit() {
     EP_SEA_COORDS.forEach(coord => {
       tiles.push({ ...coord, terrain: 'ocean', number: null, isOcean: true, discovered: true });
     });
-
+window._epGeneratedTiles = tiles;
     return tiles;
   };
 
@@ -1180,11 +1224,13 @@ function epInit() {
   };
 
   // ── Override 7: HUD — show gold ──────────────────────────────
+ // ── Override 7: HUD — show gold and inject gold trade row ────
   const _originalUpdateHud = updateHudForPlayer;
   window.updateHudForPlayer = function(player) {
     _originalUpdateHud(player);
     const goldEl = document.getElementById('gold-display');
     if (goldEl) goldEl.querySelector('span').textContent = player.gold || 0;
+    epInjectGoldTradeRow();
   };
 
   // ── Move Ships button ─────────────────────────────────────────
