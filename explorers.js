@@ -1000,8 +1000,20 @@ function epShowGoldTradePanel() {
    EP SECTION 4B · SETUP 2
    ================================================================ */
 
-function epHandleSetup2Village(v) {
-  if (epSetup2Done.has(activePlayer().id)) return;
+/**
+ * epHandleSetup1Harbor — setup round 1, place harbor settlement on coastal vertex.
+ */
+function epHandleSetup1Harbor(v) {
+  if (currentSetupPlayer().id !== activePlayer().id) return;
+
+  // Must touch a sea tile
+  const epAllCoords = [...EP_SEA_COORDS, ...EP_NORTH_COORDS, ...EP_SOUTH_COORDS];
+  const touchesSea  = epAllCoords.some(coord => {
+    const { x, y } = hexToPixel(coord.q, coord.r);
+    const corners   = hexCorners(x, y, HEX_SIZE);
+    return corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key);
+  });
+  if (!touchesSea) { showMessage('⚠️ Harbor must be on a coastal vertex'); return; }
   if (!isVertexAvailable(v)) return;
 
   freePlacement = true;
@@ -1009,19 +1021,58 @@ function epHandleSetup2Village(v) {
   freePlacement = false;
   activePlayer().harbors.add(v.key);
   epRenderHarbor(v.key);
-  updateVP(activePlayer(), 1);
+  updateVP(activePlayer(), 1); // +1 for harbor
+  epSetupHarborVertex[activePlayer().id] = v.key;
 
-  showMessage('⛵ Now place your settler ship');
-  setupAction = 'ship';
-  updateTurnLabel();
-  epActivateSetup2ShipPlacement(v.key);
+  advanceSetup();
 }
 
-function epActivateSetup2ShipPlacement(vertexKey) {
+/**
+ * epHandleSetup2Village — setup round 2, place regular settlement + collect resources.
+ */
+function epHandleSetup2Village(v) {
+  if (currentSetupPlayer().id !== activePlayer().id) return;
+  if (!isVertexAvailable(v)) return;
+
+  // Must touch at least one land tile
+  const touchesLand = landTileCache.some(t => {
+    const { x, y } = hexToPixel(t.q, t.r);
+    const corners  = hexCorners(x, y, HEX_SIZE);
+    return corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key);
+  });
+  if (!touchesLand) { showMessage('⚠️ Settlement must touch a land tile'); return; }
+
+  freePlacement = true;
+  placeVillage(v);
+  freePlacement = false;
+  epSetupVillageVertex[activePlayer().id] = v.key;
+
+  // Collect adjacent resources like classic setup2
+  landTileCache.forEach(tile => {
+    if (!tile.number) return;
+    const { x, y } = hexToPixel(tile.q, tile.r);
+    const corners  = hexCorners(x, y, HEX_SIZE);
+    const touches  = corners.some(c => `${roundCoord(c.x)},${roundCoord(c.y)}` === v.key);
+    if (touches && TERRAIN[tile.terrain]?.resource) {
+      addResourceForPlayer(activePlayer(), TERRAIN[tile.terrain].resource, 1);
+    }
+  });
+
+  advanceSetup();
+}
+
+/**
+ * epActivateSetup3Ship — highlights valid sea edges adjacent to player's
+ * setup1 harbor settlement for settler ship placement.
+ */
+function epActivateSetup3Ship() {
+  const harborKey = epSetupHarborVertex[activePlayer().id];
+  if (!harborKey) return;
+
   const validEdges = new Set();
   epSeaEdges.forEach(key => {
     const [aKey, bKey] = key.split('|');
-    if (aKey === vertexKey || bKey === vertexKey) validEdges.add(key);
+    if (aKey === harborKey || bKey === harborKey) validEdges.add(key);
   });
 
   validEdges.forEach(key => {
@@ -1033,10 +1084,8 @@ function epActivateSetup2ShipPlacement(vertexKey) {
     line.style.strokeWidth = '4';
     line.style.opacity     = '0.7';
 
-const handler = () => {
-      // Clear ALL highlighted edges before placing — prevents multiple ships
-      epClearHighlights();
-      // Remove handlers from all other valid edges
+    const handler = () => {
+      // Clean up all highlighted edges
       validEdges.forEach(k => {
         const l = document.querySelector(`line[data-key="${k}"]`);
         if (l && l._epMoveHandler) {
@@ -1045,6 +1094,7 @@ const handler = () => {
           delete l._epMoveHandler;
         }
       });
+      epClearHighlights();
 
       const ship = {
         id:        `ship-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1066,6 +1116,8 @@ const handler = () => {
     line.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
   });
 }
+
+
 
 
 /* ================================================================
@@ -1101,7 +1153,11 @@ var epHasRolled    = false;
 var epInMovement   = false;
 var epSelectedShip = null;
 var epSettlerMode  = null;
-var epSetup2Done = new Set(); // player ids who have completed setup2
+var epSetupHarborVertex  = {}; // playerId → vertexKey of setup1 harbor
+var epSetupVillageVertex = {}; // playerId → vertexKey of setup2 village
+var epSetup2Done         = new Set();
+var epSetupRound         = 1;  // 1=harbor, 2=village, 3=road+ship
+var epSetupShipPending   = false; // true after road placed, waiting for ship
 
 
 /* ================================================================
@@ -1257,7 +1313,55 @@ window._epGeneratedTiles = tiles;
     if (goldEl) goldEl.querySelector('span').textContent = player.gold || 0;
     epInjectGoldTradeRow();
   };
+// ── Override: updateTurnLabel ─────────────────────────────────
+  const _originalUpdateTurnLabel = updateTurnLabel;
+  window.updateTurnLabel = function() {
+    if (gamePhase === 'play') { _originalUpdateTurnLabel(); return; }
+    const label = document.getElementById('turn-label');
+    if (epSetupRound === 1) label.textContent = 'Setup 1 · Place Harbor Settlement';
+    else if (epSetupRound === 2) label.textContent = 'Setup 2 · Place Settlement';
+    else if (epSetupRound === 3 && !epSetupShipPending) label.textContent = 'Setup 3 · Place Road';
+    else if (epSetupRound === 3 && epSetupShipPending)  label.textContent = 'Setup 3 · Place Settler Ship';
+  };
 
+  // ── Override: advanceSetup ────────────────────────────────────
+  window.advanceSetup = function() {
+    epSetupShipPending = false;
+    setupIndex++;
+
+    // End of a full round
+    const n = players.length;
+    if (epSetupRound === 1 && setupIndex >= n) {
+      // End of round 1 — start round 2 backward
+      epSetupRound = 2;
+      setupIndex   = 0;
+      // Rebuild setupOrder as backward for round 2
+      setupOrder = [...players.map(p => p.id)].reverse();
+    } else if (epSetupRound === 2 && setupIndex >= n) {
+      // End of round 2 — start round 3 forward
+      epSetupRound = 2; // will be set to 3 below
+      setupIndex   = 0;
+      setupOrder   = players.map(p => p.id);
+      epSetupRound = 3;
+    } else if (epSetupRound === 3 && setupIndex >= n) {
+      // All setup done — begin play
+      gamePhase          = 'play';
+      currentPlayerIndex = 0;
+      updateHudForPlayer(activePlayer());
+      updateTurnLabel();
+      showMessage(`Setup complete! ${activePlayer().name} goes first`);
+      document.getElementById('roll-dice-btn').style.display = 'inline-block';
+      document.getElementById('end-turn-btn').style.display  = 'none';
+      return;
+    }
+
+    const player = players[setupOrder[setupIndex]];
+    currentPlayerIndex = player.id;
+    setupAction = epSetupRound === 3 ? 'road' : 'village';
+    updateHudForPlayer(player);
+    updateTurnLabel();
+  };
+  
   // ── Move Ships button ─────────────────────────────────────────
   document.getElementById('move-ships-btn').addEventListener('click', () => {
     if (epInMovement) {
