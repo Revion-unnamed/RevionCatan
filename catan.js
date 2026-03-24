@@ -976,44 +976,36 @@ function currentSetupPlayer() {
   return players[setupOrder[setupIndex]];
 }
 
-/**
- * Handles the transition between players and rounds during the 
- * initial placement phase. Updated to support E&P's 3-round setup.
- */
 function advanceSetup() {
-  setupTurnIndex++;
-
-  // Check if we finished all rounds defined in the setupOrder array
-  if (setupTurnIndex >= setupOrder.length) {
-    gamePhase = 'main';
-    setupAction = 'none';
-    // In E&P, the first player starts after the 3rd round
-    currentPlayerIndex = setupOrder[0]; 
-    showMessage("Setup complete! " + activePlayer().name + ", roll the dice.");
-  } else {
-    // Determine which phase we are in based on the turn index
-    // Base Catan usually has 2 * numPlayers. E&P has 3 * numPlayers.
-    const totalPlayers = players.length;
-    
-    if (setupTurnIndex < totalPlayers) {
-      gamePhase = 'setup1';
-    } else if (setupTurnIndex < totalPlayers * 2) {
-      gamePhase = 'setup2';
-    } else {
-      gamePhase = 'setup3'; // New phase for E&P Road + Ship
-    }
-
-    currentPlayerIndex = setupOrder[setupTurnIndex];
-    setupAction = 'village'; // Every round in E&P starts with a placement
-    
-    // In E&P Round 3, the action is actually Road + Ship, handled in explorers.js
-    if (gamePhase === 'setup3') setupAction = 'ep_road_ship';
-
-    updateHudForPlayer(activePlayer());
-    showMessage(activePlayer().name + ": Place your " + (gamePhase === 'setup1' ? "Harbor Settlement" : "Settlement"));
+  setupIndex++;
+  // Switch to setup2 when we cross the halfway point
+  if (setupIndex === players.length) {
+    gamePhase = 'setup2';
   }
-  renderBoard();
+  if (setupIndex >= setupOrder.length) {
+    // All setup turns done — begin normal play
+    gamePhase          = 'play';
+    if (GAME_CONFIG.fishermen) {
+  document.getElementById('fish-market-btn').style.display = 'inline-block';
+    updateFishBtn();
 }
+    currentPlayerIndex = 0;
+    updateHudForPlayer(activePlayer());
+    updateTurnLabel();
+
+    // Show Roll button so first player rolls to start
+    showMessage(`Setup complete! ${activePlayer().name} goes first`);
+    document.getElementById('roll-dice-btn').style.display = 'inline-block';
+    document.getElementById('end-turn-btn').style.display  = 'none';
+    return;
+  }
+  setupAction = 'village';
+  const player = currentSetupPlayer();
+  currentPlayerIndex = player.id;
+  updateHudForPlayer(player);
+  updateTurnLabel();
+}
+
 
 function updateTurnLabel() {
   const label = document.getElementById('turn-label');
