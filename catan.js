@@ -1322,8 +1322,8 @@ const canRoad = edge.seaCount !== 2 &&
                   (gamePhase !== 'play' || canAfford(ROAD_COST));
 
 const canShip = GAME_CONFIG.mode === 'explorers' &&
-                  edge.isSea &&
-                  canAfford({ Lumber: 1, Wool: 1 }) &&
+                  edge.isSea && (gamePhase !== 'play' ||
+                  canAfford({ Lumber: 1, Wool: 1 })) &&
                   (() => {
                     const [aKey, bKey] = edge.key.split('|');
 
