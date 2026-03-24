@@ -520,7 +520,7 @@ function epRenderHarbor(vertexKey) {
     return el.getAttribute('x') === circle.getAttribute('cx') &&
            parseFloat(el.getAttribute('y')) === parseFloat(circle.getAttribute('cy')) + 1;
   });
-  if (existing) existing.textContent = '🏠🌊';
+  if (existing) existing.textContent = '⚓';
 
   const circle = svg.querySelector(`[data-key="${vertexKey}"]`);
   if (circle) circle.setAttribute('data-harbor', 'true');
