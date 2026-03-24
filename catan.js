@@ -1536,7 +1536,9 @@ function placeRoad(edge) {
   line.classList.add('road');
   line.style.stroke = activePlayer().color;
 
-  if (gamePhase !== 'play') advanceSetup();
+if (gamePhase !== 'play' && !(GAME_CONFIG.mode === 'explorers' && epSetupRound === 3)) {
+    advanceSetup();
+  }
   updateLongestRoad();
 }
 
