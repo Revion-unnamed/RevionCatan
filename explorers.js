@@ -251,12 +251,15 @@ function epRenderShip(ship) {
   const player = players.find(p => p.id === ship.playerId);
   const color  = player ? player.color : '#ffffff';
 
-  const body = svgEl('rect', {
-    x: (-14).toFixed(2), y: (-5).toFixed(2),
-    width: '28', height: '8', rx: '4',
-    fill: color, stroke: '#2c1a0e', 'stroke-width': '1.5',
-    'pointer-events': 'none',
-  });
+// 1. The Hull: Swapped 'rect' for a 'path' to get that tapered ship shape
+const body = svgEl('path', {
+  // M: Move to back-top, Q: curve to pointed front, L: back-bottom, Z: close
+  d: 'M -14,-4 Q 0,-6 14,0 Q 0,6 -14,4 Z',
+  fill: color, 
+  stroke: '#2c1a0e', 
+  'stroke-width': '1.2',
+  'pointer-events': 'none',
+});
 
   const mast = svgEl('line', {
     x1: '0', y1: '-5', x2: '0', y2: '-13',
@@ -289,7 +292,7 @@ function epRenderShip(ship) {
 
   if (ship.hold === 'settler') {
     const holdLabel = svgEl('text', {
-      x: '0', y: '3',
+      x: '-6', y: '-1',
       'text-anchor': 'middle', 'dominant-baseline': 'central',
       'font-size': '7', 'pointer-events': 'none',
       'data-settler-hold': 'true',
