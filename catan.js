@@ -1245,10 +1245,11 @@ function onVertexClick(v) {
     epHandleVertexClick(v);
     return;
   }
-  // In E&P setup2, place harbor settlement instead of regular village
-  if (GAME_CONFIG.mode === 'explorers' && gamePhase === 'setup2' && setupAction === 'village') {
-    epHandleSetup2Village(v);
-    return;
+  // E&P setup routing
+  if (GAME_CONFIG.mode === 'explorers' && gamePhase !== 'play') {
+    if (epSetupRound === 1) { epHandleSetup1Harbor(v); return; }
+    if (epSetupRound === 2) { epHandleSetup2Village(v); return; }
+    return; // setup3 vertex clicks not handled here
   }
 
   const available    = isVertexAvailable(v);
@@ -1300,6 +1301,20 @@ function onEdgeClick(edge) {
   if (gamePhase === 'play' && !hasRolledThisTurn) return;
   if (typeof epInMovement !== 'undefined' && epInMovement) return;
   if (gamePhase !== 'play' && setupAction !== 'road' && setupAction !== 'ship') return;
+  if (GAME_CONFIG.mode === 'explorers' && gamePhase !== 'play' && epSetupRound === 3) {
+    if (setupAction === 'road') {
+      // Normal road placement — after placing, switch to ship
+      if (!isEdgeAvailable(edge)) return;
+      placeRoad(edge);
+      setupAction        = 'ship';
+      epSetupShipPending = true;
+      updateTurnLabel();
+      epActivateSetup3Ship();
+      return;
+    }
+    return; // ship placement handled by epActivateSetup3Ship highlights
+  }
+  
   if (gamePhase !== 'play' && currentSetupPlayer().id !== activePlayer().id) return;
 
 const canRoad = edge.seaCount !== 2 &&
