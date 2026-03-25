@@ -1159,7 +1159,7 @@ var epSettlerMode  = null;
 var epSetupHarborVertex  = {}; // playerId → vertexKey of setup1 harbor
 var epSetupVillageVertex = {}; // playerId → vertexKey of setup2 village
 var epSetup2Done         = new Set();
-var epSetupRound         = 1;  // 1=harbor, 2=village, 3=road+ship
+var          = 1;  // 1=harbor, 2=village, 3=road+ship
 var epSetupShipPending   = false; // true after road placed, waiting for ship
 
 
@@ -1321,10 +1321,10 @@ window._epGeneratedTiles = tiles;
   window.updateTurnLabel = function() {
     if (gamePhase === 'play') { _originalUpdateTurnLabel(); return; }
     const label = document.getElementById('turn-label');
-    if (epSetupRound === 1) label.textContent = 'Setup 1 · Place Harbor Settlement';
-    else if (epSetupRound === 2) label.textContent = 'Setup 2 · Place Settlement';
-    else if (epSetupRound === 3 && !epSetupShipPending) label.textContent = 'Setup 3 · Place Road';
-    else if (epSetupRound === 3 && epSetupShipPending)  label.textContent = 'Setup 3 · Place Settler Ship';
+    if ( === 1) label.textContent = 'Setup 1 · Place Harbor Settlement';
+    else if ( === 2) label.textContent = 'Setup 2 · Place Settlement';
+    else if ( === 3 && !epSetupShipPending) label.textContent = 'Setup 3 · Place Road';
+    else if ( === 3 && epSetupShipPending)  label.textContent = 'Setup 3 · Place Settler Ship';
   };
 
   // ── Override: advanceSetup ────────────────────────────────────
@@ -1334,20 +1334,21 @@ window._epGeneratedTiles = tiles;
 
     // End of a full round
     const n = players.length;
-    if (epSetupRound === 1 && setupIndex >= n) {
+    if ( === 1 && setupIndex >= n) {
       // End of round 1 — start round 2 backward
-      epSetupRound = 2;
+       = 2;
       setupIndex   = 0;
       // Rebuild setupOrder as backward for round 2
       setupOrder = [...players.map(p => p.id)].reverse();
-    } else if (epSetupRound === 2 && setupIndex >= n) {
+    } else if ( === 2 && setupIndex >= n) {
       // End of round 2 — start round 3 forward
-      epSetupRound = 2; // will be set to 3 below
+       = 2; // will be set to 3 below
       setupIndex   = 0;
       setupOrder   = players.map(p => p.id);
-      epSetupRound = 3;
-    } else if (epSetupRound === 3 && setupIndex >= n) {
+       = 3;
+    } else if ( === 3 && setupIndex >= n) {
       // All setup done — begin play
+      epClearHighlights();
       gamePhase          = 'play';
       currentPlayerIndex = 0;
       updateHudForPlayer(activePlayer());
@@ -1360,7 +1361,7 @@ window._epGeneratedTiles = tiles;
 
     const player = players[setupOrder[setupIndex]];
     currentPlayerIndex = player.id;
-    setupAction = epSetupRound === 3 ? 'road' : 'village';
+    setupAction =  === 3 ? 'road' : 'village';
     updateHudForPlayer(player);
     updateTurnLabel();
   };
